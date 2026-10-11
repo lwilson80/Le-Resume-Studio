@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#173b3f">
+  <meta name="referrer" content="no-referrer">
+  <title>Save your document | Le Resume Studio</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="accessibility.css">
+  <link rel="stylesheet" href="browser.css">
+  <script type="module" src="download-page.js"></script>
+</head>
+<body class="download-page" data-page="download">
+  <a class="skip-link" href="#download-content">Skip to document download</a>
+  <main id="download-content" class="download-card" tabindex="-1" aria-busy="true">
+    <noscript><p class="script-note">Enable JavaScript in your browser to prepare this document for download.</p></noscript>
+    <a class="download-brand" href="./">Le Resume Studio <span>Your documents</span></a>
+    <span class="eyebrow">READY FOR YOUR NEXT OPPORTUNITY</span>
+    <h1 id="file-title" tabindex="-1">Save your document</h1>
+    <p id="file-status" class="download-status" role="status" aria-live="polite" aria-atomic="true">Preparing your file…</p>
+    <div class="file-summary"><strong id="file-name"></strong><small id="file-type"></small></div>
+    <p id="file-error" class="error-message" role="alert" tabindex="-1" hidden></p>
+    <div class="save-actions"><a id="file-browser" class="dark-button" target="_blank" rel="noopener noreferrer" hidden>Open download page in browser <span class="sr-only">(opens in a new tab)</span></a><a id="file-save" class="dark-button" download hidden>Save file</a><button type="button" id="file-share" class="secondary-button" aria-describedby="file-name file-type file-guidance" hidden>Share file</button><a class="secondary-button" href="./">Return to Le Resume Studio</a></div>
+    <p id="file-guidance" class="download-guidance"></p>
+    <p id="file-ats-note" class="download-guidance"></p>
+    <details class="download-review"><summary>Review document text</summary><pre id="document-text" tabindex="0" role="region" aria-label="Scrollable document text"></pre></details>
+  </main>
+  <footer class="download-footer">© 2026 Marabou Lane LLC</footer>
+
+</body>
+</html>

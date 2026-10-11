@@ -1,0 +1,50 @@
+/* Responsive browser defaults and safe areas, with ordinary CSS fallbacks. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+button,input,select,textarea{font-family:inherit}
+input,select,textarea,.jd-field textarea,.export-bar #export-document{font-size:1rem;font-size:max(1rem,16px)}
+button,a,summary{touch-action:manipulation}
+input,select,textarea{max-width:100%;min-width:0}
+.workspace,.sidebar,.download-card,.download-card>*{min-width:0}
+.nav-item,.resume-paper,.analysis-panel,.history-item,.file-summary,.dialog-intro,.download-guidance,.browser-help,.intro h1,.output-heading h2,.dialog-heading h2,.field label,.version-pill,.topbar{overflow-wrap:break-word;overflow-wrap:anywhere}
+dialog{-webkit-overflow-scrolling:touch}
+dialog::backdrop{-webkit-backdrop-filter:blur(3px)}
+#copy-text{min-height:16rem;max-height:35rem;resize:vertical}
+.browser-help{margin:1rem 0 1.5rem;line-height:1.8}
+.browser-help p{font-size:.875rem;margin-top:.75rem}
+.save-actions button{min-height:2.75rem;max-width:100%;font-size:.875rem}
+.script-note{margin:1rem;padding:1rem;background:#fff1ee;color:#a54833}
+.storage-note{margin:0 0 1rem;padding:1rem;background:#fbefe0;color:#203536;border-left:3px solid #865d33;overflow-wrap:anywhere}
+.skip-link{left:max(1rem,env(safe-area-inset-left,0px));top:max(1rem,env(safe-area-inset-top,0px))}
+.workspace-footer{padding-bottom:calc(1.5rem + env(safe-area-inset-bottom,0px))}
+.download-page{padding-top:max(4rem,env(safe-area-inset-top,0px));padding-left:max(1.5rem,env(safe-area-inset-left,0px));padding-right:max(1.5rem,env(safe-area-inset-right,0px));padding-bottom:calc(2rem + env(safe-area-inset-bottom,0px))}
+@media(max-width:1000px){
+  .sidebar{padding-top:calc(1rem + env(safe-area-inset-top,0px));padding-left:max(1rem,env(safe-area-inset-left,0px));padding-right:max(1rem,env(safe-area-inset-right,0px))}
+  .workspace{padding-left:max(1rem,env(safe-area-inset-left,0px));padding-right:max(1rem,env(safe-area-inset-right,0px))}
+  .intro{padding-block:1.75rem}
+  .jd-field textarea{height:clamp(12rem,35vh,20rem)}
+  .document-wrap{max-height:38rem;max-height:min(38rem,70dvh)}
+  .analysis-panel{max-height:38rem;max-height:min(38rem,70dvh)}
+}
+@media(max-width:1000px),(pointer:coarse){
+  dialog{position:fixed;inset:0 0 auto;margin:1rem auto;top:calc(var(--visible-top,0px) + env(safe-area-inset-top,0px));max-width:calc(100vw - 2rem - env(safe-area-inset-left,0px) - env(safe-area-inset-right,0px));max-height:calc(100vh - 2rem);max-height:calc(var(--visible-height,100dvh) - 2rem - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));scroll-padding-block:2rem}
+  .dialog-actions{padding-bottom:env(safe-area-inset-bottom,0px)}
+  #copy-text{min-height:10rem}
+}
+@media(max-width:640px){
+  .workspace{padding-left:max(.75rem,env(safe-area-inset-left,0px));padding-right:max(.75rem,env(safe-area-inset-right,0px))}
+  .export-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .review-controls{flex-wrap:wrap}
+  .review-tabs{flex-basis:100%}
+  .review-tabs .tab{max-width:100%;overflow-wrap:anywhere}
+  .review-toolbar{margin-left:auto;padding:.375rem .75rem}
+  .export-actions #copy-resume{width:100%}
+  .export-actions button{width:100%;min-width:0;white-space:normal}
+  .save-actions{align-items:stretch}
+  .save-actions a,.save-actions button{width:100%;justify-content:center}
+  .download-page{padding-top:calc(1rem + env(safe-area-inset-top,0px));padding-left:max(.75rem,env(safe-area-inset-left,0px));padding-right:max(.75rem,env(safe-area-inset-right,0px))}
+  .download-card{width:100%}
+}
+@media(max-height:500px) and (min-width:600px) and (max-width:1000px){
+  .sidebar nav{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .intro{padding-block:1rem}
+}

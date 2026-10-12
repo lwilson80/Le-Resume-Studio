@@ -1,7 +1,8 @@
-import {createBlankMaster} from './resume.js';
+import {PrivateVault,VAULT_KEY} from './privacy.js';
+import {createBlankMaster,roleHeaderFields} from './resume.js';
 import {tailorResume, auditResume, resumeText, createCoverLetter, coverLetterText,reviewApplication} from './engine.js';
 import {WRITING_PROFILE,polishResume,polishCoverLetter} from './writing.js';
-import {createDownloadPayload,createExportBlob,configureSaveLink,configureShareButton,downloadPageUrl,isEmbedded} from './downloads.js';
+import {createDownloadPayload,createExportBlob,configureSaveLink,configureShareButton,configurePrivateHandoff,isEmbedded} from './downloads.js';
 import {initializeDialogs,openDialog,closeDialog,notify,fieldError,clearFieldError,showFieldError,focusElement} from './accessibility.js';
 import {cloneData,trackViewport} from './browser.js';
 import {ATS_PLATFORMS,ATS_TEMPLATE_RULES,getATSProfile,reviewATS,reviewATSFile} from './ats.js';
@@ -14,7 +15,10 @@ const MASTER_KEY = 'lw-resume-studio-master-v1', HISTORY_KEY = 'lw-resume-studio
 // Retire the previous draft cache without touching the master or saved versions.
 try {localStorage.removeItem('lw-resume-studio-draft-v1');} catch {}
 let storageUnavailable=false;
+const privateVault=new PrivateVault();let privateUnlocked=false;
+const initiallyProtected=privateVault.exists();
 function readStored(key, fallback) {
+  if(initiallyProtected)return fallback;
   let saved;try{saved=localStorage.getItem(key);}catch{storageUnavailable=true;return fallback;}
   try{const value=JSON.parse(saved);return value??fallback;}catch{return fallback;}
 }
@@ -37,7 +41,13 @@ function showStorageNotice() {
   storageUnavailable=true;$('storage-note').hidden=false;
   $('storage-note').textContent='Browser storage is unavailable. Your edits and saved versions stay available only while this tab is open. Download copies before closing it.';
 }
-function storeValue(key, value) {try {localStorage.setItem(key, JSON.stringify(value)); return true;} catch {showStorageNotice();toast('Browser storage is unavailable. This version works until the tab closes; download a copy to keep it.'); return false;}}
+function storeValue(key,value) {
+  if(privateVault.exists()){
+    if(!privateUnlocked){toast('Unlock your protected workspace before saving.');return false;}
+    return privateVault.write({master:key===MASTER_KEY?value:master,history:key===HISTORY_KEY?value:history}).then(()=>true).catch(()=>{showStorageNotice();toast('Protected data could not be saved. Download a copy before closing this tab.');return false;});
+  }
+  try{localStorage.setItem(key,JSON.stringify(value));return true;}catch{showStorageNotice();toast('Browser storage is unavailable. This version works until the tab closes; download a copy to keep it.');return false;}
+}
 function showError(id, error) {showFieldError(document,id,error);}
 function clearError(id) {clearFieldError(document,id);}
 initializeDialogs(document);
@@ -80,7 +90,7 @@ function setTab(name) {
 }
 function renderDocument(resume) {
   const contact = [resume.phone, resume.email, resume.linkedin].filter(Boolean).map(escape).join(' | ');
-  $('resume-document').innerHTML = `<h2 class="resume-name">${escape(resume.name.toUpperCase())}</h2><div class="resume-contact">${contact}</div><section class="resume-section"><h3>PROFESSIONAL SUMMARY</h3><p>${escape(resume.summary)}</p></section><section class="resume-section"><h3>CORE COMPETENCIES</h3><p class="resume-competencies">${resume.competencies.map(escape).join(' | ')}</p></section><section class="resume-section"><h3>PROFESSIONAL EXPERIENCE</h3>${resume.roles.map(r => `<div class="resume-role"><div class="employer">${escape(r.employer)}</div><div class="role-heading"><span>${escape(r.title)}</span><span>${escape(r.dates)}</span></div><ul>${r.bullets.map(b => `<li>${escape(b)}</li>`).join('')}</ul></div>`).join('')}</section><section class="resume-section"><h3>TECHNICAL SKILLS</h3>${resume.skills.map(s => `<div class="skill-line"><strong>${escape(s.group)}:</strong> ${s.items.map(escape).join(', ')}</div>`).join('')}</section><section class="resume-section"><h3>EDUCATION</h3>${resume.education.map(e => `<div class="resume-education"><div class="role-heading"><span>${escape(e.school)}</span><span>${escape(e.dates)}</span></div><p>${escape(e.qualification)}</p></div>`).join('')}</section>`;
+  $('resume-document').innerHTML = `<h2 class="resume-name">${escape(resume.name.toUpperCase())}</h2><div class="resume-contact">${contact}</div><section class="resume-section"><h3>PROFESSIONAL SUMMARY</h3><p>${escape(resume.summary)}</p></section><section class="resume-section"><h3>CORE COMPETENCIES</h3><p class="resume-competencies">${resume.competencies.map(escape).join(' | ')}</p></section><section class="resume-section"><h3>PROFESSIONAL EXPERIENCE</h3>${resume.roles.map(r => `<div class="resume-role">${roleHeaderFields(r).map(field=>`<div class="${field==='dates'?'role-dates':'employer'}">${escape(r[field])}</div>`).join('')}<ul>${r.bullets.map(b => `<li>${escape(b)}</li>`).join('')}</ul></div>`).join('')}</section><section class="resume-section"><h3>TECHNICAL SKILLS</h3>${resume.skills.map(s => `<div class="skill-line"><strong>${escape(s.group)}:</strong> ${s.items.map(escape).join(', ')}</div>`).join('')}</section><section class="resume-section"><h3>EDUCATION</h3>${resume.education.map(e => `<div class="resume-education"><div class="role-heading"><span>${escape(e.school)}</span><span>${escape(e.dates)}</span></div><p>${escape(e.qualification)}</p></div>`).join('')}</section>`;
 }
 function renderCoverLetter() {
   if (!current) {$('cover-document').innerHTML='';$('cover-notice').textContent='A matching cover letter is generated with every tailored resume.';return;}
@@ -230,6 +240,7 @@ function cancelMasterImport(){
   $('restore-master').disabled=!masterReady()&&!masterDraft?.importedText;
 }
 function openMaster(event) {
+  if(privateVault.exists()&&!privateUnlocked){openPrivacy();return;}
   cancelMasterImport();$('master-import-status').textContent='';clearError('master-import-error');
   masterDraft=clone(master);if(!masterDraft.roles.length)masterDraft.roles.push(blankRole());
   $('master-heading').textContent=masterReady()?'Edit your master resume':'Add your master resume';
@@ -276,15 +287,15 @@ $('master-editor').addEventListener('click',event=>{
   const details=fieldElement?.closest('details');if(details)details.open=true;focusElement(fieldElement);
 });
 for (const id of ['open-master','source-edit','edit-master-inline']) $(id).addEventListener('click', openMaster);
-$('master-form').addEventListener('submit', event => {
+$('master-form').addEventListener('submit', async event => {
   event.preventDefault(); clearError('master-error');
   if(masterImportController)return;
-  try {master = collectEditor(masterDraft,'m-',true,event.currentTarget); master.source = master.importedText?'Uploaded master resume':'Edited master resume'; const saved=storeValue(MASTER_KEY,master); closeDialog(document,'master-dialog'); refreshView(); toast(saved?'Master resume saved. Tailor again to use your updated experience.':'Master resume is ready in this tab. Browser storage is unavailable; download your documents before closing it.');}
+  try {master = collectEditor(masterDraft,'m-',true,event.currentTarget); master.source = master.importedText?'Uploaded master resume':'Edited master resume'; const saved=await storeValue(MASTER_KEY,master); closeDialog(document,'master-dialog'); refreshView(); toast(saved?'Master resume saved. Tailor again to use your updated experience.':'Master resume is ready in this tab. Browser storage is unavailable; download your documents before closing it.');}
   catch(error) {showError('master-error',error);}
 });
-$('restore-master').addEventListener('click', () => {
+$('restore-master').addEventListener('click', async () => {
   if(!confirm('Clear this browser’s master resume and current workspace? Saved application versions remain available.'))return;
-  master=createBlankMaster();const cleared=storeValue(MASTER_KEY,master);resetWorkspace();toast(cleared?'Your master resume is now blank. Saved application versions remain available.':'Your master resume is blank in this tab. Browser storage could not be updated, so the previous master may return after reopening.');
+  master=createBlankMaster();const cleared=await storeValue(MASTER_KEY,master);resetWorkspace();toast(cleared?'Your master resume is now blank. Saved application versions remain available.':'Your master resume is blank in this tab. Browser storage could not be updated, so the previous master may return after reopening.');
 });
 
 $('edit-output').addEventListener('click', event => {
@@ -340,18 +351,20 @@ $('history-list').addEventListener('click', event => {
   reviewApplication(current,{reextract:true}); updateCount(); activeTab = 'resume'; refreshView(); closeDialog(document,'history-dialog',{returnTo:$('output-heading')}); toast('Saved version opened.');
 });
 function removeStoredVersions() {
+  if(privateVault.exists())return storeValue(HISTORY_KEY,[]);
   try {localStorage.removeItem(HISTORY_KEY);return true;} catch {}
   // An empty replacement also deletes document contents if removal is restricted.
   try {localStorage.setItem(HISTORY_KEY,'[]');return true;} catch {showStorageNotice();return false;}
 }
-$('clear-history').addEventListener('click', () => {
-  const deleted = removeStoredVersions();
+$('clear-history').addEventListener('click', async () => {
+  const deleted = await removeStoredVersions();
   history = []; historyDeletionFailed = !deleted;
   resetWorkspace({keepHistoryOpen:true});renderHistory();focusElement($('history-heading'));
   toast(deleted?'All saved resumes and cover letters have been deleted.':'The resumes and cover letters were removed from this tab, but deletion from browser storage could not be confirmed. Try Clear saved versions again or clear this app’s data in your browser settings.');
 });
 // Other open app tabs must discard their copies when this browser history is cleared.
 globalThis.addEventListener?.('storage', event => {
+  if(event.key===VAULT_KEY){lockPrivacy(false);toast('Protected data changed in another tab. Unlock again to reload it.');return;}
   if(event.key!==HISTORY_KEY && event.key!==null)return;
   if(event.storageArea && event.storageArea!==globalThis.localStorage)return;
   if(event.key===HISTORY_KEY) {
@@ -371,14 +384,14 @@ async function exportSelected(format) {
   button.disabled=true;button.textContent='Preparing…';
   button.setAttribute('aria-busy','true');toast('Preparing your '+kind.replace('cover','cover letter')+' download. Please wait.');
   try {
-    const payload=createDownloadPayload(version,kind,format),pageUrl=downloadPageUrl(payload);
+    const payload=createDownloadPayload(version,kind,format);
     const blob=await createExportBlob(payload);
     if(epoch!==workspaceEpoch)return;
     releaseDownload?.();
     const releaseSave=configureSaveLink($('save-file'),$('save-status'),blob,payload);
     const releaseShare=configureShareButton($('save-share'),$('save-status'),blob,payload);
-    releaseDownload=()=>{releaseSave();releaseShare();};
-    $('save-browser').href=pageUrl;
+    const releaseHandoff=configurePrivateHandoff($('save-browser'),payload,$('save-status'));
+    releaseDownload=()=>{releaseSave();releaseShare();releaseHandoff();};
     const embedded=isEmbedded();
     $('save-file').className=embedded?'secondary-button':'dark-button';
     $('save-browser').className=embedded?'dark-button':'secondary-button';
@@ -431,3 +444,35 @@ function resetWorkspace({keepHistoryOpen=false}={}) {
 resetWorkspace();
 // Also clear browser-restored form values and back/forward cache snapshots.
 globalThis.addEventListener?.('pageshow',resetWorkspace);
+
+function openPrivacy(){
+  clearError('privacy-error');$('privacy-password').value='';$('privacy-confirm').value='';
+  const exists=privateVault.exists();$('privacy-confirm').hidden=exists;$('privacy-confirm-label').hidden=exists;
+  $('privacy-submit').textContent=exists?'Unlock private workspace':'Protect saved data';$('privacy-lock').hidden=!privateUnlocked;
+  $('privacy-state').textContent=exists?(privateUnlocked?'Your saved master and versions are encrypted. This tab is unlocked.':'Your saved data is encrypted and locked. Enter your passphrase to use it.'):'Saved data currently belongs to this browser profile. Protect it with a passphrase before sharing this device.';
+  openDialog(document,'privacy-dialog',$('open-privacy'));
+}
+async function lockPrivacy(wait=true){
+  if(wait){try{await privateVault.flush();}catch{}}
+  privateVault.lock();privateUnlocked=false;master=createBlankMaster();history=[];masterDraft=null;resetWorkspace();refreshView();
+  try{sessionStorage.removeItem('lw-resume-studio-export-v1');for(let i=sessionStorage.length-1;i>=0;i--){const key=sessionStorage.key(i);if(key?.startsWith('lw-resume-studio-transfer-'))sessionStorage.removeItem(key);}}catch{}
+  toast('Private workspace locked. Unlock it with your passphrase to restore saved data.');
+}
+$('open-privacy').addEventListener('click',openPrivacy);
+$('privacy-lock').addEventListener('click',()=>lockPrivacy());
+$('privacy-dialog').addEventListener('close',()=>{$('privacy-password').value='';$('privacy-confirm').value='';});
+$('privacy-form').addEventListener('submit',async event=>{
+  event.preventDefault();clearError('privacy-error');const password=$('privacy-password').value,exists=privateVault.exists();
+  if(!exists&&password!==$('privacy-confirm').value){showError('privacy-error',fieldError('The passphrases do not match.','privacy-confirm'));return;}
+  $('privacy-submit').disabled=true;$('privacy-form').setAttribute('aria-busy','true');
+  try{
+    if(exists){const data=await privateVault.unlock(password);master=validMaster(data.master)?data.master:createBlankMaster();history=data.history.filter(v=>v&&validMaster(v.resume)&&validMaster(v.master)&&Array.isArray(v.keywords)).slice(0,10);}
+    else await privateVault.create(password,{master,history});
+    // Also retry cleanup after an interrupted protection setup.
+    for(const key of [MASTER_KEY,HISTORY_KEY,'lw-resume-studio-draft-v1'])localStorage.removeItem(key);
+    if([MASTER_KEY,HISTORY_KEY].some(key=>localStorage.getItem(key)!==null))throw new Error('Legacy data could not be deleted. Clear this app’s browser data before using password protection on a shared device.');
+    privateUnlocked=true;closeDialog(document,'privacy-dialog');resetWorkspace();refreshView();toast('Private workspace unlocked. Your saved data is available in this tab.');
+  }catch(error){privateVault.lock();privateUnlocked=false;showError('privacy-error',fieldError(error.message,'privacy-password'));}
+  finally{$('privacy-password').value='';$('privacy-confirm').value='';$('privacy-submit').disabled=false;$('privacy-form').setAttribute('aria-busy','false');}
+});
+if(initiallyProtected)toast('Your private workspace is locked. Choose Privacy and password to unlock it.');

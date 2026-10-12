@@ -29,7 +29,8 @@ export function wordXmlText(xml){
   });
   return [...xml.matchAll(/<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/g)].map(match=>{
     const paragraph=match[0].replace(/<w:(?:tab|br|cr)\b[^>]*\/>/g,' ');
-    return [...paragraph.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)].map(m=>decode(m[1])).join('');
+    const text=[...paragraph.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)].map(m=>decode(m[1])).join('');
+    return text&&/<w:numPr(?:\s|>)/.test(paragraph)?'• '+text:text;
   }).filter(Boolean).join('\n');
 }
 function checkZipSizes(bytes){
@@ -57,9 +58,16 @@ export async function extractResumeText(file,{signal,loadZip=zipLoader,loadPDF=p
       if(document.numPages>IMPORT_LIMITS.pages)throw new Error('Upload a resume of 30 pages or fewer.');
       const pages=[];
       for(let p=1;p<=document.numPages;p++){
-        stopped(signal);const page=await document.getPage(p),content=await page.getTextContent();let line='',y=null,lines=[];
-        for(const item of content.items){if(typeof item.str!=='string')continue;const nextY=item.transform?.[5];if(y!==null&&Math.abs(nextY-y)>3){lines.push(line.trim());line='';}line+=(line?' ':'')+item.str;y=nextY;if(item.hasEOL){lines.push(line.trim());line='';y=null;}}
-        if(line.trim())lines.push(line.trim());pages.push(lines.join('\n'));page.cleanup();
+        stopped(signal);const page=await document.getPage(p),content=await page.getTextContent(),rows=[];
+        for(const item of content.items){
+          if(typeof item.str!=='string'||!item.str.trim())continue;
+          const y=item.transform?.[5]||0,x=item.transform?.[4]||0;
+          let row=rows.find(row=>Math.abs(row.y-y)<3);
+          if(!row){row={y,items:[]};rows.push(row);}row.items.push({x,text:item.str});
+        }
+        // PDF drawing order can put a list marker after its text. Geometry restores
+        // the visual reading order so a final bullet cannot acquire a trailing dash.
+        pages.push(rows.sort((a,b)=>b.y-a.y).map(row=>row.items.sort((a,b)=>a.x-b.x).map(item=>item.text).join(' ').trim()).join('\n'));page.cleanup();
       }
       text=pages.join('\n');
     }catch(error){stopped(signal);if(error.name==='PasswordException')throw new Error('Remove the PDF password before uploading.');throw error;}
@@ -90,20 +98,40 @@ export function parseResumeText(text){
   for(const line of sections.skills){const split=clean(line).split(':');resume.skills.push({group:split.length>1?split.shift().trim():'Skills',items:split.join(':').split(/\s*[|;,•]\s*/).map(s=>s.trim()).filter(Boolean)});}
   if(resume.skills.length>20)resume.skills=[{group:'Skills',items:resume.skills.flatMap(s=>s.items)}];
   if(!resume.competencies.length)resume.competencies=[...new Set(resume.skills.flatMap(s=>s.items))];
-  let header=[],role=null;
-  for(const line of sections.roles){
-    const bullet=/^[•●▪◦*-]\s*/.test(line);
-    if(!bullet&&datePattern.test(line)&&!/^\w+ed\s/.test(line)){
-      const pieces=line.split(/\s*[|·]\s*|\s+[–—]\s+/).filter(Boolean),dateIndex=pieces.findIndex(part=>datePattern.test(part));
-      const dates=dateIndex>=0?pieces.splice(dateIndex,1)[0]:line;
-      const labels=[...header,...pieces];
-      role={employer:labels[0]||'',title:labels[1]||'',dates,bullets:[]};resume.roles.push(role);header=[];
-    }else if(bullet){if(!role){role={employer:header[0]||'',title:header[1]||'',dates:'',bullets:[]};resume.roles.push(role);header=[];}role.bullets.push(clean(line));}
-    else if(role&&/^(?:[A-Z][a-z]+ed|Led|Built|Oversaw|Managed|Support|Analyze|Develop|Maintain|Provide|Coordinate)\b/.test(line))role.bullets.push(clean(line));
-    else if(role&&role.bullets.length&&header.length===0&&line.length>100)role.bullets[role.bullets.length-1]+=' '+line;
-    else header.push(line);
+  let role=null,jobPending=[];
+  const entries=sections.roles;
+  const employmentDate=/^(?:(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?\s+|\d{1,2}[/.-])?(?:19|20)\d{2}(?:\s*(?:to|[-–—])\s*(?:(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?\s+|\d{1,2}[/.-])?(?:(?:19|20)\d{2}|present|current|now))?$/i;
+  const isBullet=line=>/^[•●▪◦*-]\s*/.test(line);
+  const titlePattern=/\b(?:analyst|manager|director|officer|specialist|engineer|developer|coordinator|administrator|assistant|associate|consultant|supervisor|lead|leader|head|president|intern|designer|technician|accountant|representative|advisor|adviser|clerk|nurse|teacher|professor|scientist|recruiter|architect|executive|operator|cashier|agent|counsel|paralegal|attorney|founder)\b/i;
+  const headingLabel=line=>line&&!isBullet(line)&&line.length<=120&&!/[.!?]$/.test(line)&&! /^(?:Achieved|Accomplished|Analyzed|Managed|Led|Built|Oversaw|Supported|Support|Documented|Wrote|Created|Developed|Set goals|Maintained|Delivered|Provided|Coordinated|Reduced|Increased|Improved)\b/i.test(line);
+  function headerAt(index){
+    const inline=entries[index].split(/\s*[|·]\s*/).filter(Boolean);
+    let parts=inline,consumed=1;
+    if(parts.length!==3){parts=entries.slice(index,index+3);consumed=3;}
+    if(parts.length!==3||parts.some(isBullet))return null;
+    const d=parts.findIndex(part=>employmentDate.test(part));if(d<0)return null;
+    const labels=parts.map((text,i)=>({text,i})).filter(p=>p.i!==d);
+    if(!labels.every(p=>headingLabel(p.text)))return null;
+    let title=labels.find(p=>titlePattern.test(p.text)&&! /\b(?:company|corporation|corp|inc|llc|university|bank|group|partners)\b/i.test(p.text))||labels[0];
+    const employer=labels.find(p=>p!==title);
+    const order=parts.map((_,i)=>i===d?'dates':i===title.i?'title':'employer');
+    return {consumed,role:{title:title.text,employer:employer.text,dates:parts[d],bullets:[],headerOrder:order}};
   }
-  if(!resume.roles.length)resume.roles.push({employer:'',title:'',dates:'',bullets:[]});
+  for(let i=0;i<entries.length;){
+    const heading=headerAt(i);
+    if(heading){role=heading.role;resume.roles.push(role);jobPending=[];i+=heading.consumed;continue;}
+    const line=entries[i++];
+    if(!role){
+      if(isBullet(line)){
+        const title=jobPending.find(p=>titlePattern.test(p))||jobPending[0]||'',employer=jobPending.find(p=>p!==title)||'';
+        role={title,employer,dates:'',bullets:[],headerOrder:['title','employer','dates']};resume.roles.push(role);jobPending=[];
+      }else{jobPending.push(line);continue;}
+    }
+    // Until a complete next heading is found, text belongs to the current role.
+    // This includes short final bullets, unusual verbs, and accomplishments mentioning years.
+    role.bullets.push(clean(line));
+  }
+  if(!resume.roles.length)resume.roles.push({employer:'',title:'',dates:'',bullets:jobPending.map(clean)});
   // Common labeled or line-separated education; missing dates remain blank.
   let education=null,pending=[];
   const qualification=/\b(?:bachelor|master|doctor|associate|degree|diploma|certificate|certification|BSc|BS|BA|MBA|PhD)\b/i;

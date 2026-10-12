@@ -1,3 +1,4 @@
+import {roleHeaderFields} from './resume.js';
 import {WRITING_PROFILE,polishResume,polishCoverLetter,cleanEnglish,firstPersonBullet,actionVerb,writingReview} from './writing.js';
 import {cloneData} from './browser.js';
 // Every addition is checked against the master resume, never against the job description alone.
@@ -133,10 +134,10 @@ export function hasPhrase(text, phrase) {
   return (' ' + normalize(text) + ' ').includes(' ' + normalize(phrase) + ' ');
 }
 export function masterText(master) {
-  return [master.name, master.phone, master.email, master.linkedin, master.summary, master.competencies.join(' | '), ...master.roles.flatMap(r => [r.employer, r.title, r.dates, ...r.bullets]), ...master.skills.map(s => s.items.join(', ')), ...master.education.flatMap(e => [e.school, e.qualification, e.dates])].join('\n');
+  return [master.name, master.phone, master.email, master.linkedin, master.summary, master.competencies.join(' | '), ...master.roles.flatMap(r => [...roleHeaderFields(r).map(field=>r[field]), ...r.bullets]), ...master.skills.map(s => s.items.join(', ')), ...master.education.flatMap(e => [e.school, e.qualification, e.dates])].join('\n');
 }
 export function resumeText(resume) {
-  return [resume.name.toUpperCase(), [resume.phone, resume.email, resume.linkedin].filter(Boolean).join(' | '), '', 'PROFESSIONAL SUMMARY', resume.summary, '', 'CORE COMPETENCIES', resume.competencies.join(' | '), '', 'PROFESSIONAL EXPERIENCE', ...resume.roles.flatMap(r => [r.employer, r.title, r.dates, ...r.bullets.map(b => '- ' + b), '']), 'TECHNICAL SKILLS', ...resume.skills.map(s => `${s.group}: ${s.items.join(', ')}`), '', 'EDUCATION', ...resume.education.flatMap(e => [e.school, e.dates, e.qualification, ''])].join('\n');
+  return [resume.name.toUpperCase(), [resume.phone, resume.email, resume.linkedin].filter(Boolean).join(' | '), '', 'PROFESSIONAL SUMMARY', resume.summary, '', 'CORE COMPETENCIES', resume.competencies.join(' | '), '', 'PROFESSIONAL EXPERIENCE', ...resume.roles.flatMap(r => [...roleHeaderFields(r).map(field=>r[field]), ...r.bullets.map(b => '- ' + b), '']), 'TECHNICAL SKILLS', ...resume.skills.map(s => `${s.group}: ${s.items.join(', ')}`), '', 'EDUCATION', ...resume.education.flatMap(e => [e.school, e.dates, e.qualification, ''])].join('\n');
 }
 const ignoredPhrases = new Set(['the role', 'this role', 'the position', 'this position', 'the team', 'our team', 'the company', 'our company', 'an equal opportunity employer', 'equal opportunity', 'united states', 'us', 'u s', 'the firm', 'firm approved', 'attention to detail', 'full time', 'part time', 'remote', 'hybrid', 'on site', 'on the job', 'all rights reserved', 'about us', 'apply now', 'job description', 'preferred qualifications', 'required qualifications', 'ats', 'hr', 'eeoc', 'eeo', 'eoe', 'pto', 'usd', 'est', 'et', 'pm', 'am']);
 function candidatePhrases(jd, existing) {

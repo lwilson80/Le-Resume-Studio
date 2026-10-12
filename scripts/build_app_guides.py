@@ -120,7 +120,7 @@ def base(kind, opening):
     d.core_properties.title = 'Le Resume Studio '+kind
     d.core_properties.author = 'Marabou Lane LLC'; d.core_properties.subject = opening[:255]
     para(d, 'Le Resume Studio', 'Title'); para(d, kind, 'Subtitle')
-    para(d, DATE+'  |  Published app version 14')
+    para(d, DATE+'  |  Published app version 15')
     para(d, opening)
     return d
 
@@ -142,8 +142,14 @@ def tutorial():
         ('Experience','For each role, enter employer, original job title, dates, and at least one accomplishment. Enter one complete bullet per line without a bullet symbol.'),
         ('Skills and education','Add skill groups if needed and separate their skills with commas. Add education entries if needed; each added entry needs a school, qualification, and date or status.')
     ], [1.45,5.55])
-    para(d, 'Uploading fills an editable draft. Expand Review extracted resume text and check every field, including dates and accomplishments; complex layouts can require correction. Uploading replaces unsaved edits, but changes the saved master only after Save. Use Add or Remove to edit entries; at least one role must remain. Limits: 30 roles and 20 skill groups or education entries.')
+    para(d, 'Uploading fills an editable draft. Expand Review extracted resume text and check every field, including dates and accomplishments; complex layouts can require correction. Final accomplishments stay with their role; job headings retain the uploaded role, company and year order. Uploading replaces unsaved edits, but changes the saved master only after Save. Use Add or Remove to edit entries; at least one role must remain. Limits: 30 roles and 20 skill groups or education entries.')
     para(d, 'Choose Save master resume. If a required field is missing, the app identifies it and moves focus to it. Once the master is complete, Tailor resume + cover letter becomes available. Clear master resume removes the saved master and uploaded text, including during an import. Cancel import keeps the preceding draft. Saved application versions are deleted separately with Clear saved versions. Enter only experience, tools, credentials, and achievements you can substantiate.')
+
+    new_page(d, 'Protect your private workspace')
+    para(d, 'App links do not contain applicant data. Uploads, tailoring and exports run in your browser; the app does not send resumes to an applicant database or other users. A fresh browser starts blank. On a shared browser profile, enable password protection before leaving saved data on the device.')
+    steps(d, ['Choose Privacy and password in the navigation.', 'Enter and confirm a unique passphrase of at least 12 characters, then choose Protect saved data. Existing master and saved versions are encrypted; their old plaintext records are removed after encryption succeeds.', 'Before handing the device to another person, choose Privacy and password, then Lock private workspace. This blanks the workspace without deleting the encrypted master or saved versions.', 'After reloading or reopening, enter your passphrase through Privacy and password to unlock the saved data. Sections 1 and 2 remain blank until you use the master or reopen a saved version.'])
+    para(d, 'Keep the passphrase safely: there is no recovery service, server account or cross-device synchronization. Without password protection, saved data belongs to the browser profile and can be read by another person using that profile. Protection applies to saved data; another person can see an unlocked tab or a separately downloaded file. Close download tabs and protect files on the device separately.')
+    para(d, 'Open download page uses a private, five-minute browser-session handoff. The URL contains only a random identifier and cannot retrieve the document in another browser session. Popups or session storage may be blocked; use the direct save option if the new tab cannot open. Sharing a file through your device’s Share option is an explicit action you control.')
 
     new_page(d, '2 Tailor and review both documents')
     steps(d, [
@@ -195,7 +201,7 @@ def tutorial():
     ], [2.1,4.9])
     h(d, 'Sharing the app', 2)
     para(d, 'Share the ordinary app link. A new end user with access to the Site and a browser profile that has not used it receives a blank Master resume and zero saved versions. The link does not transfer your master or saved applications. Site access follows the owner’s sharing settings; sending the link does not itself grant access.')
-    para(d, 'People using the same device and browser profile can see the local data stored there. On a shared computer, download the files you need, clear saved versions, and clear the master. Clearing app data does not delete files already saved to Downloads or documents transferred into a separate download tab. Close those tabs and manage downloaded files separately.')
+    para(d, 'Without password protection, people using the same device and browser profile can see the local data stored there. On a shared computer, download the files you need, clear saved versions, and clear the master. Clearing app data does not delete files already saved to Downloads or documents transferred into a separate download tab. Close those tabs and manage downloaded files separately.')
     h(d, 'When storage is unavailable', 2)
     para(d, 'A persistent notice explains that edits and history are available only while the current tab is open. You can still enter a master, tailor, and download documents. Download copies before closing or reloading the tab. If deletion reports a storage error, retry and verify it; the app does not report confirmed deletion when browser storage rejected the change.')
 
@@ -217,7 +223,7 @@ def tutorial():
         ('A file is missing','Finish the save step, check Downloads or the selected folder, and use Open download page from an embedded app.'),
         ('Word or PDF fails to load','Try the format again. Use Plain text if the export dependency cannot load.'),
         ('PDF changes a name or character','Use Word or Plain text to preserve characters outside the PDF font’s supported set.'),
-        ('My saved versions are absent','Return to the browser profile where you created them. Clearing browser data or using private browsing can remove or isolate them.')
+        ('My saved versions are absent','Return to the original browser profile and unlock through Privacy and password if protected. Clearing browser data or private browsing can remove or isolate saved data.')
     ], [2.1,4.9])
     para(d, 'For feedback, describe the task, device, operating system, browser version, expected result, actual result, and any error text. Remove personal resume details from screenshots or examples you send. The Web and Mobile Browser Guide contains the developer’s detailed troubleshooting and test plan.')
     save(d,'Le_Resume_Studio_User_Tutorial')
@@ -239,15 +245,16 @@ def developer():
 
     new_page(d, '2 Source map and presentation layers')
     table(d, ['File or folder','Responsibility'], [
-        ('dist/index.html','Main page, input/output sections, six review tabs, seven dialogs, labels, and export controls.'),
+        ('dist/index.html','Main page, input/output sections, six review tabs, eight dialogs, labels, and export controls.'),
         ('dist/app.js','DOM orchestration, master editor, saved history, document edits, reset lifecycle, clipboard, and export dialogs.'),
-        ('dist/resume.js','createBlankMaster factory. Published data contains no personal resume seed.'),
+        ('dist/resume.js','createBlankMaster and roleHeaderFields. Uploaded header order is retained; manual entry defaults to role/company/years.'),
+        ('dist/privacy.js','Web Crypto password-derived encrypted vault, unlock, write queue and lock invalidation.'),
         ('dist/imports.js','Local file validation, DOCX/PDF/TXT text extraction, conservative draft parsing and cancellation.'),
         ('dist/engine.js','Keyword catalog and detection, evidence support, prioritization, tailoring, cover letters, text output, and scoring.'),
         ('dist/writing.js','The HR writing profile, nine action-verb categories, conservative English edits, and writing review.'),
         ('dist/ats.js','46 named systems plus general profile, shared template rules, source-linked guidance, and file checks.'),
         ('dist/exports.js','Resume and cover-letter DOCX/PDF generation, font embedding, text wrapping, and pagination.'),
-        ('dist/downloads.js','Payload validation, filenames, Blob creation, URL-fragment transfer, save links, and optional file sharing.'),
+        ('dist/downloads.js','Payload validation, filenames, Blob creation, private session transfer, save links, and optional file sharing.'),
         ('dist/download.html and download-page.js','Standalone download page receiving an exact document snapshot.'),
         ('dist/accessibility.js','Dialog focus, announcements, field errors, and focus restoration.'),
         ('dist/browser.js','Clone fallback, lazy export-library loading, and visible viewport tracking.'),
@@ -256,7 +263,7 @@ def developer():
         ('README and review Markdown files','Implementation notes for ATS, accessibility, and browser compatibility.')
     ], [2.65,4.35])
     h(d, 'HTML and CSS maintenance', 2)
-    para(d, 'Both pages declare English, include a device-width viewport with zoom enabled, load the same three stylesheets in order, and use a module script. styles.css establishes the layout and visual system; accessibility.css overrides sizing, contrast, focus, and reflow; browser.css adds safe-area and keyboard viewport behavior. Preserve this order because later declarations intentionally override earlier rules.')
+    para(d, 'Both pages declare English, allow viewport zoom, and load styles.css, accessibility.css and browser.css in that order. They use JavaScript modules. Preserve stylesheet order for layout, focus, contrast, reflow and mobile overrides.')
 
     new_page(d, '3 Data contracts and stored records')
     para(d, 'Master and resume objects are plain serializable data. A new factory returns empty strings and arrays, with source set to Blank master resume. The editor starts with one empty role and saves only after validating the required facts. Upload imports add source, importedText and importedFileName. The extracted text persists locally with the saved master and snapshots; Clear master removes it from the master, while saved versions remain until separately deleted.')
@@ -273,7 +280,7 @@ def developer():
     new_page(d, 'Master resume import interfaces')
     code(d, 'validateResumeFile(file) -> extension or throws\nextractResumeText(file, {signal, loadZip, loadPDF} = {})\n  -> Promise<string>\nparseResumeText(text) -> editable master draft')
     para(d, 'File validation accepts .pdf, .docx and .txt, with a 10 MB limit. UTF-8 TXT decoding rejects invalid encoding; DOCX uses JSZip and word/document.xml text with a 30 MB expanded archive limit. PDF.js extracts text from up to 30 pages, with evaluation disabled, local worker and standard fonts. No OCR is provided. Extracted text is capped at 200,000 characters; image-only or password-protected PDFs produce actionable errors.')
-    para(d, 'Parsing recognizes common section headings and line-separated roles and education. It copies extracted facts into editable fields, leaves missing values blank and retains importedText for comparison. It does not infer qualifications or guarantee recognition of every layout. Review and explicit Save are required. A successful read replaces the unsaved draft; errors leave the existing draft and saved master intact.')
+    para(d, 'Parsing recognizes common section headings and confirmed three-field employment headings. DOCX numbering retains bullet markers; PDF text is ordered by row and horizontal position. Until a complete next heading is found, text stays with the current role, including its final accomplishment. Roles retain headerOrder for preview, TXT, Word and PDF; manual entries default to title, employer, dates. It copies extracted facts into editable fields, leaves missing values blank and retains importedText for comparison. It does not infer qualifications or guarantee recognition of every layout. Review and explicit Save are required. A successful read replaces the unsaved draft; errors leave the existing draft and saved master intact.')
     para(d, 'app.js guards asynchronous reads with an epoch and AbortController. Clear, dialog close, cancellation and workspace reset invalidate pending imports; a late completion cannot restore deleted content. Save is disabled during import. The native labeled file input, polite progress, associated alert errors and review textarea preserve keyboard access. Tests exercise actual generated Word/PDF extraction and upload/save/clear behavior using fictional identifiers.')
     para(d, 'PDF.js and its worker must be served as JavaScript modules from dist/vendor/pdfjs; preserve standard_fonts and licenses. JSZip is loaded only for DOCX and PDF.js only for PDF. A failed reader load leaves manual entry and TXT available. Browser reading performs no resume-content network upload.')
 
@@ -291,9 +298,9 @@ def developer():
     para(d, 'writing.js exposes polishResume, polishCoverLetter, cleanEnglish, polishBullet, actionVerb, firstPersonBullet, and writingReview. The HR profile models a hiring reviewer with over twenty years of experience as an editorial lens. It neither adds that tenure to the applicant nor performs human review. Grammar rules are conservative; unrecognized openings and long sentences remain review items.')
 
     new_page(d, '5 Export interfaces and browser APIs')
-    code(d, 'createDownloadPayload(application, kind, format) -> Payload\nvalidateDownloadPayload(payload) -> payload or throws\ncreateExportBlob(payload, dependencies = {}) -> Promise<Blob>\nencodeDownloadPayload(payload) -> base64url string\ndecodeDownloadPayload(hash) -> validated Payload\ndownloadPageUrl(payload) -> URL string\nreadDownloadTransfer(host = globalThis) -> Payload')
+    code(d, 'createDownloadPayload(application, kind, format) -> Payload\nvalidateDownloadPayload(payload) -> payload or throws\ncreateExportBlob(payload, dependencies = {}) -> Promise<Blob>\nencodeDownloadPayload(payload) -> base64url string\ndecodeDownloadPayload(hash) -> validated Payload\ndownloadPageUrl(payload, host) -> private URL string\nconfigurePrivateHandoff(link, payload, status, host) -> cleanup\nreadDownloadTransfer(host = globalThis) -> Payload')
     para(d, 'kind is resume or cover; format is docx, pdf, or txt. The version-1 payload contains name, resume, letter, and ats. Resume payloads contain the selected resume; cover payloads contain contact data and the letter. They exclude the full master, job posting, and saved history. Filenames combine applicant, job title, company, and document type, sanitize punctuation, and add the extension.')
-    para(d, 'Validation constrains supported formats, filename characters and extension, contact strings, arrays, and letter paragraphs. Cross-tab transfer uses UTF-8 JSON encoded as base64url in #document=. The raw transfer is capped at 600,000 bytes. The receiving page removes the fragment before decoding and stores the validated snapshot in sessionStorage for refresh. This is encoding, not encryption; a copied transfer URL can disclose its document.')
+    para(d, 'Validation constrains supported formats, filename characters and extension, contact strings, arrays, and letter paragraphs. configurePrivateHandoff opens a same-origin tab on the user’s click. A 600,000-byte maximum snapshot is stored in sessionStorage under a random UUID for five minutes; only #transfer=UUID enters the URL. The opened tab inherits a copy of the source sessionStorage, consumes the transfer, clears its URL and retains the snapshot for refresh. The parent removes its transfer record. A copied URL in another session fails. Blocked popups or sessionStorage must offer direct save. Legacy encode/decode helpers remain internal serialization utilities and are not used in public links.')
     code(d, 'createDocx(resume, docxApi) -> Promise<Blob>\ncreateCoverDocx(letter, resume, docxApi) -> Promise<Blob>\ncreatePdf(resume, pdfApi, fontPrograms) -> Promise<Uint8Array>\ncreateCoverPdf(letter, resume, pdfApi, fontPrograms)\n  -> Promise<Uint8Array>')
     para(d, 'createExportBlob wraps PDF bytes in the proper Blob type and loads only the requested vendored library. Tests can inject docx, pdf, and fonts. TXT uses no export library. loadExportLibrary deduplicates concurrent script loads and permits retry after failure. PDFs embed Nimbus Sans; non-ASCII normalization can alter characters, so the file review warns users to choose Word or TXT when needed.')
     table(d, ['Browser API','Purpose and fallback'], [
@@ -325,18 +332,26 @@ def developer():
         ('lw-resume-studio-draft-v1','Retired. Removed at startup; job drafts are no longer persisted.')
     ], [3.0,4.0])
     h(d, 'Startup and resets', 2)
-    para(d, 'Load a shape-valid saved master. If none exists, recover only a valid snapshot from this browser’s history and persist it independently. An explicit blank marker prevents recovery after intentional master clearing. Otherwise use createBlankMaster. A new user therefore receives no applicant data. Master readiness controls whether tailoring is enabled.')
+    para(d, 'When protection is off, load a valid saved master or recover this browser’s history snapshot. An explicit blank marker prevents recovery after clearing. A protected workspace starts blank until unlocked. Master readiness controls tailoring; new browser profiles receive no applicant data.')
     para(d, 'resetWorkspace runs at startup and on pageshow, including back/forward-cache restoration. It clears job fields, output, audits, dialogs, manual-copy text, preferences, and prepared download links, while retaining master/history. workspaceEpoch guards asynchronous tailoring and export completion so a reset or deletion cannot repopulate cleared output. Preserve these guards when adding new asynchronous work.')
     h(d, 'Deletion and storage errors', 2)
-    para(d, 'Clear saved versions removes the history key, with an empty-array fallback if removal fails. It clears memory, the current application, editors, and prepared export links, cancels in-flight work, and announces the outcome. A total storage failure exposes a retry instead of claiming confirmed deletion. A storage event clears stale copies in other app tabs. Clear master resume stores the explicit blank and resets the workspace but keeps history.')
+    para(d, 'Clear saved versions deletes the history key when unprotected, or awaits an encrypted empty-history write when protected. It clears memory, output, editors and prepared links, cancels pending work and reports persistence failures. Clear master stores a blank source and keeps history. Other-tab storage changes invalidate stale copies.')
     para(d, 'If storage is blocked or full, reads and writes are caught, a persistent notice appears, and the current tab can continue tailoring and downloading. Saving or clearing a master reports whether persistence failed. The user must download copies before the tab closes. Existing downloaded files and separate download-tab snapshots are outside history deletion.')
     h(d, 'Security and sharing boundaries', 2)
-    para(d, 'Applicant data is browser-local and is not encrypted at rest by the app. Site access is controlled by the hosting audience; there is no per-applicant login. Users of one browser profile can access that profile’s stored data. A normal app link transfers neither master nor history. The standalone export link intentionally carries its selected document in a fragment, not the HTTP request. Treat copied links and shared devices accordingly.')
-    para(d, 'Escape user and stored strings before inserting HTML. Validate decoded transfers and stored shapes, avoid executable interpolation, and do not publish test fixtures or personal resume data. The browser loads only vendored export assets. No service worker or native offline package is currently shipped, so offline availability is not promised.')
+    para(d, 'Applicant data stays local. Opt-in password protection encrypts saved records and removes legacy plaintext. Without it, users sharing a browser profile can read saved data. Normal app and download URLs contain no applicant content. Site sharing exposes app code; no applicant database or cloud account exists.')
+    para(d, 'Escape stored text, validate transfers and avoid executable interpolation. Both HTML pages use no-referrer metadata and same-origin script/connection policies, block object embeds and external form submission, and load local vendors. No service worker or native offline package is shipped.')
+
+    new_page(d, 'Password protected storage API')
+    code(d, 'PrivateVault(storage, crypto)\n  exists() -> boolean\n  create(passphrase, {master, history}) -> Promise<void>\n  unlock(passphrase) -> Promise<{master, history}>\n  write({master, history}) -> Promise<void>\n  flush() -> Promise<void>\n  lock() -> void')
+    para(d, 'privacy.js uses Web Crypto AES-GCM with a 256-bit nonextractable key, a random 16-byte salt and a fresh 12-byte IV for each write. PBKDF2-HMAC-SHA-256 derives the key with 600,000 iterations. The minimum passphrase length is 12 characters. localStorage key le-resume-studio-private-vault-v1 contains schema, salt, IV, work factor and authenticated ciphertext; it contains no plaintext master, history, password or key. Authentication failure rejects wrong passwords and modified ciphertext.')
+    para(d, 'Writes serialize through a promise queue and capture a JSON snapshot. Lock increments an epoch and drops the key; a pending encryption cannot write after locking. Encrypted writes replace the vault atomically only after encryption succeeds. Save master and deletion controls await persistence. Other-tab vault updates invalidate an unlocked copy. Storage failure preserves the current tab and exposes an error rather than claiming durable protection. Protection setup and unlock both retry deletion of legacy plaintext keys.')
+    para(d, 'This is local passphrase protection, not a server login or a password recovery system. It does not hide an unlocked tab, protect downloads on the filesystem, secure a compromised device, or prevent a trusted future app script from reading an unlocked workspace. Browser session restoration and actual popup/iframe behavior require real-device verification. Close download tabs when handing over a shared device. Keep the app origin and vendored assets trusted.')
+    link(d, 'OWASP password storage guidance', 'https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html')
+    link(d, 'MDN sessionStorage and opener inheritance', 'https://developer.mozilla.org/en-US/docs/Web/API/Window/sessionStorage')
 
     new_page(d, '8 Verification deployment and maintenance')
     h(d, 'Checks and release procedure', 2)
-    para(d, 'The master-upload release passed 107 node:test checks on October 12 2026. Tests cover tailoring evidence, both document scores, English rules, actual export bytes, transfers, save failures, history deletion, reset guards, keyboard semantics, capability fallbacks, and seven fresh-master journeys. DOM adapters and capability simulations do not substitute for browser rendering or real ATS uploads.')
+    para(d, 'The formatting and privacy release passed 119 node:test checks on October 12 2026. Tests cover tailoring evidence, both document scores, English rules, actual export bytes, transfers, save failures, history deletion, reset guards, keyboard semantics, capability fallbacks, and seven fresh-master journeys. DOM adapters and capability simulations do not substitute for browser rendering or real ATS uploads.')
     steps(d, [
         'Run npm test. If export code changes, also run the applicable export-check scripts and inspect actual Word/PDF output, extracted text, page breaks, and fonts.',
         'Confirm dist contains only deployable assets. Keep tests and personal fixtures out of the hosting archive. Review README, ATS_COMPATIBILITY, ACCESSIBILITY, and BROWSER_COMPATIBILITY when behavior changes.',
@@ -402,14 +417,20 @@ def browsers():
         ('A new user sees someone’s master','Same browser profile or unintended published seed. A genuinely fresh profile must be empty.','Check local keys, createBlankMaster, and the deployment archive.'),
         ('Saved versions are absent','Different browser/profile/origin, cleared site data, private session, or storage rejection.','Check the persistent notice and caught storage errors.'),
         ('History returns after deletion','Failed persistent removal or stale cross-tab state.','Check removeItem fallback, retry status, and storage listener.'),
-        ('A download page says to return','Missing/invalid fragment and no valid session snapshot, or transfer exceeds the cap.','Prepare a new payload; check decode/validation and sessionStorage.'),
+        ('A download page says to return','Missing/invalid fragment and no valid session snapshot, or transfer exceeds the cap.','Prepare a fresh transfer; check sessionStorage inheritance, popup permissions, expiry and validation.'),
         ('Copying is denied','Clipboard API is absent or denied. Automatic write needs an allowed secure context [3].','Use the focus-managed manual copy dialog; preserve the document text.')
     ], [1.55,3.0,2.45])
     h(d, 'Browser data is isolated by context', 2)
     para(d, 'localStorage belongs to an origin and browser profile. Private browsing has different persistence behavior, and access can throw SecurityError [4]. An embedded app may face additional storage restrictions. Treat storage as optional: the app must remain usable with its persistent warning, without claiming changes were saved when a write failed.')
     h(d, 'Transfer snapshots have a separate lifetime', 2)
-    para(d, 'The standalone download page receives only the selected document in a base64url fragment. It removes the fragment on receipt and retains a validated snapshot in that tab’s sessionStorage. It does not depend on shared localStorage with the embedded app. Clearing Saved versions resets app history and prepared links but does not erase a separate download tab’s snapshot or files already downloaded. Avoid sharing document transfer links as if they were the ordinary app link.')
+    para(d, 'The standalone download page receives its selected snapshot from an inherited sessionStorage copy, using a one-use random token with a five-minute expiry. The URL contains no applicant content. The page removes the token and retains the snapshot in its own sessionStorage. Another browser session cannot retrieve a copied token. Popups and blocked session storage can prevent handoff; offer direct download instead. Clearing Saved versions resets app history and prepared links but does not erase a separate download tab’s snapshot or files already downloaded. Avoid sharing document transfer links as if they were the ordinary app link.')
     para(d, 'Acceptance check: save an application, reload and confirm blank Sections 1 and 2, explicitly reopen history, clear it, and confirm zero after reopening. Test missing master recovery from local history, explicit master clearing, a second fresh browser profile, blocked storage, clipboard denial, and deletion in another open app tab.')
+
+    new_page(d, 'Password protection and private transfers')
+    para(d, 'Privacy and password encrypts local saved data after the user chooses a passphrase. This requires HTTPS, Web Crypto and writable localStorage. A protected workspace starts blank and locked on a new load. Unlock requires the same passphrase; there is no cloud password reset. Check for denied storage, quota exhaustion and interrupted legacy-record deletion before declaring setup complete. Wrong passwords or modified ciphertext must never reveal data.')
+    para(d, 'Lock must cancel stale imports and clear the workspace, editors, previews and prepared links while retaining the encrypted vault. Verify saved-version and master deletion by unlocking again. An unlocked download tab and files saved on the device remain separate copies; close or delete them separately. Different users should use separate browser profiles, or lock the protected workspace before sharing a device.')
+    para(d, 'Private download handoff requires a new tab to inherit an independent copy of the opener’s sessionStorage. The URL contains only a random token. The parent removes its transfer record; the receiver consumes it within five minutes. A copied token in an unrelated session or a replay must fail. Check direct browser and embedded ChatGPT contexts, blocked popups, private browsing and Safari/mobile storage behavior. Direct save remains the fallback. No native-browser certification is claimed.')
+    para(d, 'Both pages declare same-origin script and connection restrictions and no-referrer metadata. Keep vendors local and avoid adding analytics, upload endpoints or external scripts that could receive applicant content. Check browser consoles for blocked vendor behavior before extending the policy. Policy and real-device enforcement must be reviewed after deployment changes.')
 
     new_page(d, '4 Mobile layout focus and text issues')
     h(d, 'The keyboard hides a field or save control', 2)
@@ -425,7 +446,7 @@ def browsers():
     para(d, 'Acceptance check: use a real phone keyboard in every editor, add/remove master entries, rotate the device, zoom, inspect long text and filenames, open all dialogs, and operate the review tabs with keyboard and screen reader. Test VoiceOver on Safari, TalkBack on Android, and a desktop screen reader such as NVDA with the supported browsers.')
 
     new_page(d, '5 Device verification and issue reporting')
-    para(d, 'Automated evidence for this release is 107 passing tests, including upload, save, clear and real Word/PDF extraction checks. Actual device rendering, native save/share experiences, assistive technology, and uploads into the listed ATS systems remain unverified. Record results before advertising complete compatibility or accessibility conformance.')
+    para(d, 'Automated evidence for this release is 119 passing tests, including upload, save, clear and real Word/PDF extraction checks. Actual device rendering, native save/share experiences, assistive technology, and uploads into the listed ATS systems remain unverified. Record results before advertising complete compatibility or accessibility conformance.')
     table(d, ['Test environment','Priority journeys'], [
         ('Safari on macOS','Fresh master, complete tailoring/editing, all formats, clipboard fallback, zoom, keyboard and VoiceOver.'),
         ('Safari on iPhone and iPad','Keyboard viewport, rotation, safe areas, large text, downloads/previews, Share file if offered, VoiceOver.'),

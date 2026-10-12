@@ -1,6 +1,6 @@
 # Browser compatibility review
 
-Review date: 2026-10-11. Intended targets: current desktop Safari, Chrome, Edge and Firefox, plus current Safari/Chrome on iPhone/iPad and Chrome/Firefox on Android. The app requires JavaScript modules and native HTML dialogs. This is a compatibility implementation review, not a certification of every browser version or device.
+Review date: 2026-10-12. Intended targets: current desktop Safari, Chrome, Edge and Firefox, plus current Safari/Chrome on iPhone/iPad and Chrome/Firefox on Android. The app requires JavaScript modules and native HTML dialogs. This is a compatibility implementation review, not a certification of every browser version or device.
 
 ## Changes
 
@@ -29,7 +29,7 @@ Review date: 2026-10-11. Intended targets: current desktop Safari, Chrome, Edge 
 
 ## Verification
 
-`npm test`: 100 tests passed, including 7 fresh-browser master and onboarding checks. The 14 browser-capability simulations cover clone fallbacks, writing punctuation, export loading/deduplication/retry, actual Word/PDF bytes without dynamic lookbehind, file-sharing support and failure states, keyboard viewport updates, clipboard success/fallback, and unavailable storage. Existing tests cover all six resume/cover-letter export combinations, payload handoff, native save completion/cancellation, ATS keyword evidence, and 12 accessibility checks.
+`npm test`: 119 tests passed, including 7 fresh-browser master and onboarding checks. The 14 browser-capability simulations cover clone fallbacks, writing punctuation, export loading/deduplication/retry, actual Word/PDF bytes without dynamic lookbehind, file-sharing support and failure states, keyboard viewport updates, clipboard success/fallback, and unavailable storage. Existing tests cover all six resume/cover-letter export combinations, payload handoff, native save completion/cancellation, ATS keyword evidence, and 12 accessibility checks.
 
 No managed browser-control skill was available in this environment. Actual browser rendering, platform share sheets, Safari downloads, touch interaction, screen readers, and on-device keyboard/orientation behavior remain unverified. Before claiming complete browser compatibility, test these journeys on real Safari/macOS, Safari/iOS, Chrome/Android and desktop Chrome/Firefox/Edge: tailor, edit each document, switch tabs, copy, download all formats, share supported files, cancel saves, reopen history, rotate the device, zoom, and use the on-screen keyboard. Include storage-restricted and embedded contexts.
 
@@ -46,3 +46,8 @@ No managed browser-control skill was available in this environment. Actual brows
 ## Master resume upload — version 14
 
 Master resume accepts local DOCX, text-based PDF, or UTF-8 TXT files up to 10 MB (PDF: 30 pages). Review the extracted text and editable draft before Save. Clear master resume deletes the saved master and uploaded text and cancels pending imports; saved applications are cleared separately. Scanned PDFs require a text copy. PDF.js 5.6.205 and JSZip 3.10.1 load locally on demand. Automated tests cover import, save, removal, errors and stale results; real-device and screen-reader upload validation remains pending.
+
+
+## Formatting and privacy — version 15
+
+Imports retain each final accomplishment within its job and preserve uploaded role/company/year heading order across preview, Word, PDF and TXT. Privacy and password provides opt-in AES-256-GCM protection of browser-local saved data, with a passphrase required after reopening. Without it, a shared browser profile can access saved records. Download links carry only temporary session-bound identifiers, not documents. Same-origin content restrictions and no-referrer metadata are present on both pages. Real browser, device and screen-reader verification remains pending.

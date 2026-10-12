@@ -1,3 +1,4 @@
+import {roleHeaderFields} from './resume.js';
 const ascii = value => String(value).normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/[\u2018\u2019]/g, "'").replace(/[\u201c\u201d]/g, '"').replace(/[\u2013\u2014]/g, '-').replace(/\u2022/g, '-').replace(/[^\x20-\x7e\n]/g, '?');
 
 export async function createDocx(resume, api = globalThis.docx) {
@@ -14,9 +15,7 @@ export async function createDocx(resume, api = globalThis.docx) {
     heading('PROFESSIONAL EXPERIENCE')
   ];
   for (const role of resume.roles) {
-    children.push(p([run(role.employer, {bold: true})], {keepNext: true, spacing: {before: 125, after: 35}}));
-    children.push(p([run(role.title, {bold: true})], {keepNext: true, spacing: {after: 35}}));
-    children.push(p(role.dates, {keepNext: true, spacing: {after: 75}}));
+    for(const [i,field] of roleHeaderFields(role).entries())children.push(p([run(role[field],{bold:field!=='dates'})],{keepNext:true,spacing:{before:i===0?125:0,after:i===2?75:35}}));
     for (const bullet of role.bullets) children.push(p(bullet, {numbering: {reference: 'resume-bullets', level: 0}, spacing: {after: 55, line: 264}, keepLines: true}));
   }
   children.push(heading('TECHNICAL SKILLS'));
@@ -97,9 +96,7 @@ export async function createPdf(resume, api = globalThis.PDFLib, fontPrograms) {
     const firstBulletLines = wrap(role.bullets[0] || '', 11, font, contentWidth - 12).length;
     ensure(15 + (headingLines + firstBulletLines) * 11 * 1.18);
     y -= 3;
-    textBlock(role.employer, {weight: true, after: 3});
-    textBlock(role.title, {weight: true, after: 3});
-    textBlock(role.dates, {after: 6});
+    for(const field of roleHeaderFields(role))textBlock(role[field],{weight:field!=='dates',after:field==='dates'?6:3});
     for (const bullet of role.bullets) textBlock(bullet, {indent: 12, bullet: true, after: 3, keepTogether: true});
   }
   heading('TECHNICAL SKILLS');

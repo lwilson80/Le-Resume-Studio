@@ -6,7 +6,7 @@ import vm from 'node:vm';
 import {MASTER_RESUME} from './fixtures/master-resume.js';
 import {tailorResume} from '../dist/engine.js';
 import {createDocx,createPdf,createCoverDocx,createCoverPdf} from '../dist/exports.js';
-import {decodeDownloadPayload} from '../dist/downloads.js';
+import {readDownloadTransfer} from '../dist/downloads.js';
 import {setup} from './dom-adapter.mjs';
 
 test('Returning visitor starts with a blank workspace, tailors from their saved master, persists a version, and switches tabs',async()=>{
@@ -82,7 +82,7 @@ test('Refreshing or reopening clears both sections but saved versions can be reo
   assert.equal(ui.get('job-description').value,resetJd);assert.ok(ui.get('cover-document').innerHTML.includes('Keep This Application'));
   await ui.get('tab-cover').dispatch('click');await ui.get('download-txt').dispatch('click');
   assert.equal(ui.get('save-dialog').open,true);
-  assert.match(ui.get('save-file').href,/^blob:/);assert.match(ui.get('save-browser').href,/#document=/);
+  assert.match(ui.get('save-file').href,/^blob:/);assert.match(ui.get('save-browser').href,/download\.html$/);
   const saved=ui.values.get('lw-resume-studio-history-v1');await ui.page.dispatch('pageshow',{persisted:true});assertBlankWorkspace(ui);
   assert.equal(ui.get('save-dialog').open,false);assert.equal(ui.get('save-file').attrs.href,undefined);assert.equal(ui.get('save-browser').attrs.href,undefined);
   assert.equal(ui.get('save-file').href,'');assert.equal(ui.get('save-browser').href,'');
@@ -227,7 +227,8 @@ test('Inside ChatGPT, export offers a browser page carrying the edited document'
   assert.equal(get('save-dialog').open,true);
   assert.equal(get('save-browser').className,'dark-button');
   assert.match(get('save-status').textContent,/browser tab/);
-  const payload=decodeDownloadPayload(new URL(get('save-browser').href).hash);
+  const transfers=new Map();globalThis.sessionStorage={setItem:(k,v)=>transfers.set(k,v),getItem:k=>transfers.get(k),removeItem:k=>transfers.delete(k)};let child;globalThis.open=url=>{const data=new Map(transfers);child={location:{hash:new URL(url).hash,pathname:'/download.html',search:''},history:{replaceState(){}},sessionStorage:{setItem:(k,v)=>data.set(k,v),getItem:k=>data.get(k),removeItem:k=>data.delete(k)}};return {};};
+  await get('save-browser').dispatch('click');const payload=readDownloadTransfer(child);
   assert.equal(payload.kind,'cover');assert.equal(payload.format,'txt');
   assert.equal(payload.letter.paragraphs[0],version.coverLetter.paragraphs[0]);
   assert.match(get('save-filename').textContent,/Current_Company_Cover_Letter\.txt$/);

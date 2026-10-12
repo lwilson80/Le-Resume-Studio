@@ -1,6 +1,7 @@
 import {resumeText, coverLetterText} from './engine.js';
 import {createDocx, createPdf, createCoverDocx, createCoverPdf} from './exports.js';
 import {cloneData,hasOwn,loadExportLibrary} from './browser.js';
+import {roleHeaderFields} from './resume.js';
 import {getATSProfile} from './ats.js';
 
 export const FILE_TYPES = {
@@ -27,7 +28,7 @@ export function validateDownloadPayload(p) {
 export function createDownloadPayload(version,kind,format) {
   const r=version.resume;
   const resume={name:r.name,phone:r.phone||'',email:r.email||'',linkedin:r.linkedin||''};
-  if (kind==='resume') Object.assign(resume,{summary:r.summary,competencies:r.competencies,roles:r.roles.map(({employer,title,dates,bullets})=>({employer,title,dates,bullets})),skills:r.skills.map(({group,items})=>({group,items})),education:r.education.map(({school,qualification,dates})=>({school,qualification,dates}))});
+  if (kind==='resume') Object.assign(resume,{summary:r.summary,competencies:r.competencies,roles:r.roles.map(role=>({employer:role.employer,title:role.title,dates:role.dates,bullets:role.bullets,headerOrder:roleHeaderFields(role)})),skills:r.skills.map(({group,items})=>({group,items})),education:r.education.map(({school,qualification,dates})=>({school,qualification,dates}))});
   const c=version.coverLetter;
   const letter=kind==='cover'?{date:c.date,company:c.company||'',subject:c.subject||'',salutation:c.salutation,paragraphs:c.paragraphs,closing:c.closing,signature:c.signature}:null;
   const name=[r.name,version.title||'Tailored',version.company,kind==='cover'?'Cover Letter':'Resume'].filter(Boolean).join('_').replace(/[^a-zA-Z0-9_\- ]/g,'').replace(/\s+/g,'_').slice(0,160)+'.'+format;
@@ -50,10 +51,30 @@ export function decodeDownloadPayload(hash) {
   } catch {throw new Error('This download link is invalid. Choose a format again in Le Resume Studio.');}
 }
 
-export function downloadPageUrl(payload) {
-  const url=new URL('./download.html',import.meta.url);
-  url.hash='document='+encodeDownloadPayload(payload);
-  return url.href;
+const TRANSFER_PREFIX='lw-resume-studio-transfer-';
+export function downloadPageUrl(payload,host=globalThis) {
+  validateDownloadPayload(payload);
+  const token=host.crypto?.randomUUID?.();
+  if(!token||!host.sessionStorage)throw new Error('Private browser handoff is unavailable. Save your file directly from this window.');
+  const bytes=new TextEncoder().encode(JSON.stringify(payload));
+  if(bytes.length>MAX_TRANSFER)throw new Error('This document is too large to open in another tab. Save it directly from this window.');
+  host.sessionStorage.setItem(TRANSFER_PREFIX+token,JSON.stringify({expires:Date.now()+5*60*1000,payload}));
+  const url=new URL('./download.html',import.meta.url);url.hash='transfer='+token;return url.href;
+}
+export function configurePrivateHandoff(link,payload,status,host=globalThis) {
+  link.href=new URL('./download.html',import.meta.url).href;
+  const click=event=>{
+    event.preventDefault();let url;
+    try{
+      url=downloadPageUrl(payload,host);
+      const opened=host.open?.(url,'_blank');
+      if(!opened)throw new Error('The browser blocked the download tab. Allow this popup or save directly here.');
+      // The new tab inherits an independent copy of this origin's sessionStorage.
+      host.sessionStorage.removeItem(TRANSFER_PREFIX+new URL(url).hash.slice(10));
+      status.textContent='Private download tab opened. Finish saving there.';
+    }catch(error){status.textContent=error.message||'Save your file directly from this window.';}
+  };
+  link.addEventListener('click',click);return ()=>link.removeEventListener('click',click);
 }
 
 export function documentText(payload) {
@@ -136,16 +157,19 @@ export function configureShareButton(button,status,blob,payload,host=globalThis)
   return ()=>{button.removeEventListener('click',click);button.hidden=true;};
 }
 
-// A new tab receives the selected document, without relying on shared storage.
-// Remove its contents from the address bar and retain the snapshot for tab refreshes.
+// The URL carries only a random identifier, never resume or cover-letter contents.
 export function readDownloadTransfer(host=globalThis) {
   const key='lw-resume-studio-export-v1',hash=host.location.hash;
-  if (hash) {
+  if(hash){
     host.history.replaceState(null,'',host.location.pathname+host.location.search);
-    const payload=decodeDownloadPayload(hash);
-    try {host.sessionStorage.setItem(key,JSON.stringify(payload));} catch {}
-    return payload;
+    if(!/^#transfer=[a-f0-9-]{36}$/i.test(hash))throw new Error('This private download link is invalid. Return to Le Resume Studio and prepare a file again.');
+    const transferKey=TRANSFER_PREFIX+hash.slice(10);
+    try{
+      const record=JSON.parse(host.sessionStorage.getItem(transferKey));host.sessionStorage.removeItem(transferKey);
+      if(!record||record.expires<Date.now())throw new Error('expired');
+      const payload=validateDownloadPayload(record.payload);host.sessionStorage.setItem(key,JSON.stringify(payload));return payload;
+    }catch{throw new Error('This private download belongs to another browser session or has expired. Return to Le Resume Studio and prepare your own file.');}
   }
-  try {const saved=host.sessionStorage.getItem(key);if(saved)return validateDownloadPayload(JSON.parse(saved));} catch {}
+  try{const saved=host.sessionStorage.getItem(key);if(saved)return validateDownloadPayload(JSON.parse(saved));}catch{}
   throw new Error('Return to Le Resume Studio, open your saved version, and choose Word, PDF, or plain text.');
 }

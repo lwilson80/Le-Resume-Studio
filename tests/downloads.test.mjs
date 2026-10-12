@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import vm from 'node:vm';
 import {MASTER_RESUME} from './fixtures/master-resume.js';
 import {tailorResume} from '../dist/engine.js';
-import {createDownloadPayload,encodeDownloadPayload,decodeDownloadPayload,downloadPageUrl,createExportBlob,configureSaveLink,readDownloadTransfer,documentText} from '../dist/downloads.js';
+import {createDownloadPayload,encodeDownloadPayload,decodeDownloadPayload,downloadPageUrl,createExportBlob,configureSaveLink,readDownloadTransfer,documentText,configurePrivateHandoff} from '../dist/downloads.js';
 import {startDownloadPage} from '../dist/download-page.js';
 
 const version=tailorResume(MASTER_RESUME,'Our Billing Analyst manages WIP, AR, billing recommendations, reports, forecasts and month-end close. Track realization and utilization and advise partners on engagement economics.',{title:'Billing Analyst',company:'Example & Company'});
@@ -23,19 +23,20 @@ class Element {
 function hostFor(payload,embedded=false){
   const host={};host.self=host;host.top=embedded?{}:host;
   const stored=new Map();
-  host.location={hash:'#document='+encodeDownloadPayload(payload),pathname:'/download.html',search:''};
+  host.crypto=globalThis.crypto;host.location={hash:'',pathname:'/download.html',search:''};
   host.history={replaceState:(_state,_title,path)=>{assert.equal(path,'/download.html');host.location.hash='';}};
-  host.sessionStorage={setItem:(k,v)=>stored.set(k,v),getItem:k=>stored.get(k)};
+  host.sessionStorage={setItem:(k,v)=>stored.set(k,v),getItem:k=>stored.get(k),removeItem:k=>stored.delete(k)};
+  host.location.hash=new URL(downloadPageUrl(payload,host)).hash;
   return host;
 }
 
 test('New-tab transfers preserve manual edits, Unicode, file choice, and filenames',()=>{
   for(const kind of ['resume','cover']) for(const format of ['docx','pdf','txt']){
     const payload=createDownloadPayload(version,kind,format);
-    const url=new URL(downloadPageUrl(payload));
+    const host=hostFor(payload),url=new URL('https://example.invalid/download.html'+host.location.hash);
     assert.equal(url.pathname.endsWith('/download.html'),true);
     assert.equal(url.search,'');
-    const restored=decodeDownloadPayload(url.hash);
+    const restored=readDownloadTransfer(host);
     assert.deepEqual(restored,payload);
     assert.ok(restored.name.endsWith('.'+format));
     assert.ok(documentText(restored).includes(kind==='cover'?version.coverLetter.paragraphs[0]:version.resume.summary));
@@ -65,7 +66,7 @@ test('All six handoff exports create actual files from the selected snapshot',as
   vm.runInThisContext(await fs.readFile(new URL('../dist/vendor/docx.js',import.meta.url),'utf8'));
   const fonts=await Promise.all(['NimbusSans-Regular','NimbusSans-Bold'].map(n=>fs.readFile(new URL('../dist/vendor/'+n+'.cff',import.meta.url))));
   for(const kind of ['resume','cover'])for(const format of ['pdf','docx','txt']){
-    const payload=decodeDownloadPayload(new URL(downloadPageUrl(createDownloadPayload(version,kind,format))).hash);
+    const payload=readDownloadTransfer(hostFor(createDownloadPayload(version,kind,format)));
     const blob=await createExportBlob(payload,{pdf:globalThis.PDFLib,docx:globalThis.docx,fonts});
     assert.ok(blob.size>100);
     const bytes=new Uint8Array(await blob.arrayBuffer());
@@ -147,4 +148,21 @@ test('A malformed standalone link shows an error and disables saving',async()=>{
   const result=await startDownloadPage(doc,host,()=>assert.fail('Invalid links must not export.'));
   assert.equal(elements.get('download-content').attrs['aria-busy'],'false');
   assert.ok(result.error);assert.equal(elements.get('file-error').hidden,false);assert.match(elements.get('file-error').textContent,/invalid/);assert.equal(elements.get('file-save').hidden,true);
+});
+
+
+test('Copied download URLs disclose no document text and cannot open in another browser session',()=>{
+  const payload=createDownloadPayload(version,'resume','txt'),owner=hostFor(payload),other=hostFor(createDownloadPayload(version,'cover','txt'));
+  const hash=owner.location.hash;assert.match(hash,/^#transfer=/);assert.doesNotMatch(hash,/document=|Resume|SQL|Taylor|Wilson|example/i);
+  other.location.hash=hash;assert.throws(()=>readDownloadTransfer(other),/another browser session/);
+  assert.deepEqual(readDownloadTransfer(owner),payload);
+  owner.location.hash=hash;assert.throws(()=>readDownloadTransfer(owner),/another browser session/);
+});
+test('Private handoff pins the prepared snapshot to the opened tab and removes the parent transfer record',async()=>{
+  const payload=createDownloadPayload(version,'resume','txt'),host=hostFor(payload),link=new Element(),status=new Element();let child;
+  host.open=url=>{const copy=new Map();host.sessionStorage.setItem=(k,v)=>copy.set(k,v);return {};};
+  const original=new Map();host.sessionStorage={setItem:(k,v)=>original.set(k,v),getItem:k=>original.get(k),removeItem:k=>original.delete(k)};
+  host.open=url=>{const values=new Map(original);child={...host,location:{...host.location,hash:new URL(url).hash},sessionStorage:{setItem:(k,v)=>values.set(k,v),getItem:k=>values.get(k),removeItem:k=>values.delete(k)}};return {};};
+  const release=configurePrivateHandoff(link,payload,status,host);const {promise}=link.click();await promise;
+  assert.deepEqual(readDownloadTransfer(child),payload);assert.equal(original.size,0);assert.ok(!link.href.includes('#'));release();
 });

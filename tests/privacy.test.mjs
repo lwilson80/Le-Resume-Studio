@@ -22,7 +22,7 @@ test('Protected writes serialize updates, delete contents, and never persist an 
 test('A protected returning browser starts blank, unlocks with its password, and locks without deleting its vault',async()=>{
   const s=storage(),v=new PrivateVault(s);await v.create(pass,{master,history:[]});v.lock();
   const ui=await setup({},false,{fresh:true,storage:s});await ui.get('open-master').dispatch('click');assert.equal(ui.get('privacy-dialog').open,true);assert.equal(ui.get('tailor-button').disabled,true);
-  ui.get('privacy-password').value=pass;await ui.get('privacy-form').dispatch('submit');await ui.get('open-master').dispatch('click');assert.equal(ui.get('m-name').value,'Avery Taylor');
+  ui.get('privacy-password').value=pass;await ui.get('privacy-form').dispatch('submit');await ui.get('open-master').dispatch('click');assert.ok(ui.get('master-import-text').value.includes('AVERY TAYLOR'));
   await ui.get('open-privacy').dispatch('click');await ui.get('privacy-lock').dispatch('click');assert.equal(ui.get('tailor-button').disabled,true);assert.equal(ui.get('resume-document').innerHTML,'');assert.ok(s.getItem(VAULT_KEY));
 });
 test('Protecting a browser-owned master removes its legacy plaintext records',async()=>{

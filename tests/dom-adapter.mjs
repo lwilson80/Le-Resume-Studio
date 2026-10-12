@@ -78,11 +78,10 @@ export async function withFormData(doc,action) {
   try{return await action();}finally{globalThis.FormData=native;}
 }
 export async function enterMaster(ui,resume=MASTER_RESUME) {
+  const {resumeText}=await import('../dist/engine.js');
   await ui.get('open-master').dispatch('click');
-  for(const key of ['name','email','phone','linkedin','summary'])ui.get('m-'+key).value=resume[key]||'';
-  ui.get('m-competencies').value=resume.competencies.join('\n');
-  const role=resume.roles[0];
-  for(const key of ['employer','title','dates'])ui.get('m-'+key+'-0').value=role[key];
-  ui.get('m-bullets-0').value=role.bullets.join('\n');
-  await withFormData(ui.doc,()=>ui.get('master-form').dispatch('submit'));
+  const text=resumeText(resume).replace(resume.name.toUpperCase(),resume.name);
+  ui.get('master-upload').files=[Object.assign(new Blob([text]),{name:'fictional-master.txt'})];
+  await ui.get('master-upload').dispatch('change');
+  ui.get('master-dialog').close();
 }

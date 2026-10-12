@@ -1,8 +1,8 @@
 # Le Resume Studio
 
-An access-controlled, buildless Sites application. New visitors start with an empty master resume and enter their own contact details, summary, competencies, roles, skill groups, and education. No personal resume is bundled in the published files. The editor can add and remove entries, validates the required career facts, and preserves unsaved fields while adding entries. Tailoring stays disabled until a complete master is saved.
+An access-controlled, buildless Sites application. New visitors start with a blank master. Upload a complete resume file to save it automatically; the master has no manual editing fields. Clear Master Resume removes its prior information and current workspace. No applicant resume is bundled with the published app. Tailoring remains disabled until a complete master is available.
 
-Existing browser-saved masters are preserved. When the master key is missing or corrupt, the app can recover a valid source snapshot from that same browser's saved applications and stores it independently. Clear master resume writes an explicit blank marker so history cannot silently repopulate an intentionally cleared master. Sharing the Site link transfers neither the master nor saved history; users sharing one browser profile can access unprotected local data. Enable Privacy and password before leaving saved data on a shared device. A protected workspace starts locked on a new load.
+Existing browser-saved masters are preserved. When the master key is missing or corrupt, the app can recover a valid source snapshot from that same browser's saved applications and stores it independently. Clear Master Resume writes an explicit blank marker so history cannot silently repopulate an intentionally cleared master. Sharing the Site link transfers neither the master nor saved history; users sharing one browser profile can access unprotected local data. Enable Privacy and password before leaving saved data on a shared device. A protected workspace starts locked on a new load.
 
 The app runs locally in the visitor's browser. It uses a catalog of common job terms, detects named tools and explicitly stated skills, checks source evidence, prioritizes relevant bullets, and substitutes equivalent resume terminology. It does not use an AI API or fabricate missing qualifications. Keyword coverage is a diagnostic text overlap measure, not an ATS score.
 
@@ -54,9 +54,13 @@ Production hosting remains configured in `.openai/hosting.json`; this repository
 
 ## Master resume upload — version 14
 
-Master resume accepts local DOCX, text-based PDF, or UTF-8 TXT files up to 10 MB (PDF: 30 pages). Review the extracted text and editable draft before Save. Clear master resume deletes the saved master and uploaded text and cancels pending imports; saved applications are cleared separately. Scanned PDFs require a text copy. PDF.js 5.6.205 and JSZip 3.10.1 load locally on demand. Automated tests cover import, save, removal, errors and stale results; real-device and screen-reader upload validation remains pending.
+Master resume permits file upload only: DOCX, text-based PDF, UTF-8 TXT or RTF up to 10 MB (PDF: 30 pages). A complete upload saves automatically. Extracted text is read-only; correct the original file and upload again. Clear Master Resume removes the stored source, extracted text, file selection and current output, cancels pending imports, and stays blank after reopening. Saved versions are cleared separately. Errors preserve the previous source. Real-device and screen-reader upload checks remain pending.
 
 
 ## Formatting and privacy — version 15
 
 Imports retain each final accomplishment within its job and preserve uploaded role/company/year heading order across preview, Word, PDF and TXT. Privacy and password provides opt-in AES-256-GCM protection of browser-local saved data, with a passphrase required after reopening. Without it, a shared browser profile can access saved records. Download links carry only temporary session-bound identifiers, not documents. Same-origin content restrictions and no-referrer metadata are present on both pages. Real browser, device and screen-reader verification remains pending.
+
+## Upload-only source and formatting — version 16
+
+Word and PDF uploads retain detected typography, supported section order and role/company/year headings. PDF uses compatible embedded font families. Complex tables, graphics, columns and exact original pagination are not reproduced. TXT and RTF use a single-column Arial 11-point template with 0.75-inch margins, consistent headings and action bullets. See [MIT resume checklist](https://capd.mit.edu/resources/resume-checklist/). The release passed 124 automated tests; real browser and ATS certification are not claimed.

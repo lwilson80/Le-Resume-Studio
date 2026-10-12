@@ -1,3 +1,4 @@
+import {resumeFormat} from './formatting.js';
 import {PrivateVault,VAULT_KEY} from './privacy.js';
 import {createBlankMaster,roleHeaderFields} from './resume.js';
 import {tailorResume, auditResume, resumeText, createCoverLetter, coverLetterText,reviewApplication} from './engine.js';
@@ -30,7 +31,6 @@ history = history.filter(v => v && validMaster(v.resume) && validMaster(v.master
 // Recover only this browser's own saved source; never bundle a personal default.
 const explicitlyBlank=storedMaster?.source==='Blank master resume'&&storedMaster.name===''&&Array.isArray(storedMaster.roles)&&storedMaster.roles.length===0;
 let master=validMaster(storedMaster)?storedMaster:explicitlyBlank?createBlankMaster():clone(history.find(v=>validMaster(v.master))?.master||createBlankMaster());
-let masterDraft=null;
 let masterImportEpoch=0,masterImportController;
 function masterReady() {return validMaster(master)&&master.name.trim()&&master.summary.trim()&&master.competencies.length>0&&master.roles.every(r=>r.employer.trim()&&r.title.trim()&&r.dates.trim()&&r.bullets.length);}
 let historyDeletionFailed = false;
@@ -89,8 +89,13 @@ function setTab(name) {
   updateExportChoice();
 }
 function renderDocument(resume) {
+  const style=resumeFormat(resume);
   const contact = [resume.phone, resume.email, resume.linkedin].filter(Boolean).map(escape).join(' | ');
-  $('resume-document').innerHTML = `<h2 class="resume-name">${escape(resume.name.toUpperCase())}</h2><div class="resume-contact">${contact}</div><section class="resume-section"><h3>PROFESSIONAL SUMMARY</h3><p>${escape(resume.summary)}</p></section><section class="resume-section"><h3>CORE COMPETENCIES</h3><p class="resume-competencies">${resume.competencies.map(escape).join(' | ')}</p></section><section class="resume-section"><h3>PROFESSIONAL EXPERIENCE</h3>${resume.roles.map(r => `<div class="resume-role">${roleHeaderFields(r).map(field=>`<div class="${field==='dates'?'role-dates':'employer'}">${escape(r[field])}</div>`).join('')}<ul>${r.bullets.map(b => `<li>${escape(b)}</li>`).join('')}</ul></div>`).join('')}</section><section class="resume-section"><h3>TECHNICAL SKILLS</h3>${resume.skills.map(s => `<div class="skill-line"><strong>${escape(s.group)}:</strong> ${s.items.map(escape).join(', ')}</div>`).join('')}</section><section class="resume-section"><h3>EDUCATION</h3>${resume.education.map(e => `<div class="resume-education"><div class="role-heading"><span>${escape(e.school)}</span><span>${escape(e.dates)}</span></div><p>${escape(e.qualification)}</p></div>`).join('')}</section>`;
+  $('resume-document').innerHTML = `<h2 class="resume-name">${escape(resume.name.toUpperCase())}</h2><div class="resume-contact">${contact}</div><section class="resume-section"><h3>${escape(style.labels.summary)}</h3><p>${escape(resume.summary)}</p></section><section class="resume-section"><h3>${escape(style.labels.competencies)}</h3><p class="resume-competencies">${resume.competencies.map(escape).join(' | ')}</p></section><section class="resume-section"><h3>${escape(style.labels.roles)}</h3>${resume.roles.map(r => `<div class="resume-role">${roleHeaderFields(r).map(field=>`<div class="${field==='dates'?'role-dates':'employer'}">${escape(r[field])}</div>`).join('')}<ul>${r.bullets.map(b => `<li>${escape(b)}</li>`).join('')}</ul></div>`).join('')}</section><section class="resume-section"><h3>${escape(style.labels.skills)}</h3>${resume.skills.map(s => `<div class="skill-line"><strong>${escape(s.group)}:</strong> ${s.items.map(escape).join(', ')}</div>`).join('')}</section><section class="resume-section"><h3>${escape(style.labels.education)}</h3>${resume.education.map(e => `<div class="resume-education"><div class="role-heading"><span>${escape(e.school)}</span><span>${escape(e.dates)}</span></div><p>${escape(e.qualification)}</p></div>`).join('')}</section>`;
+  const paper=$('resume-document'),markup=paper.innerHTML,blocks=[...markup.matchAll(/<section class="resume-section">[\s\S]*?<\/section>/g)].map(m=>m[0]),keys=['summary','competencies','roles','skills','education'];
+  if(blocks.length===5)paper.innerHTML=markup.slice(0,markup.indexOf('<section'))+style.sectionOrder.map(key=>blocks[keys.indexOf(key)]).join('');
+  paper.setAttribute('style',`--resume-font:${style.font};--resume-body:${style.bodySize*4/3}px;--resume-name:${style.nameSize*4/3}px;--resume-heading:${style.headingSize*4/3}px;--resume-leading:${style.lineHeight};--resume-ink:#${style.color};--resume-heading-ink:#${style.headingColor};--resume-align:${style.nameAlign};--resume-gap:${style.paragraphAfter*4/3}px;`);
+
 }
 function renderCoverLetter() {
   if (!current) {$('cover-document').innerHTML='';$('cover-notice').textContent='A matching cover letter is generated with every tailored resume.';return;}
@@ -136,7 +141,7 @@ function refreshView() {
   const ready=!!masterReady();
   $('master-detail').textContent = ready?`${master.roles.length} role${master.roles.length===1?'':'s'} · saved in this browser`:'Add your resume to begin.';
   $('master-name').textContent = ready?'Master resume loaded':'No master resume added';
-  $('edit-master-inline').textContent=ready?'Edit':'Add resume';
+  $('edit-master-inline').textContent=ready?'Manage':'Upload resume';
   $('source-summary').textContent=ready?'Your master resume is ready. Tailor a fresh version for each application.':'Add your master resume to tailor a fresh version for each application.';
   $('profile-name').textContent=master.name.trim()||'Your workspace';
   $('profile-initials').textContent=master.name.trim()?master.name.trim().split(/\s+/).slice(0,2).map(s=>s[0]).join('').toUpperCase():'LR';
@@ -187,7 +192,7 @@ $('export-document').addEventListener('change',()=>{setTab($('export-document').
 document.querySelectorAll('[data-close]').forEach(b => b.addEventListener('click', () => closeDialog(document,b.dataset.close)));
 for (const dialog of document.querySelectorAll('dialog')) dialog.addEventListener('click', event => {if (event.target === dialog) {const r = dialog.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) closeDialog(document,dialog.id);}});
 $('open-help').addEventListener('click', event => openDialog(document,'help-dialog',event.currentTarget));
-for (const [form,error] of [['master-form','master-error'],['output-form','output-error'],['cover-form','cover-error']]) $(form).addEventListener('input',()=>clearError(error));
+for (const [form,error] of [['output-form','output-error'],['cover-form','cover-error']]) $(form).addEventListener('input',()=>clearError(error));
 
 function editorField(label, name, value, multiline = false, hint = '', context = '') {
   const purpose={'m-name':['text','name'],'m-email':['email','email'],'m-phone':['tel','tel'],'m-linkedin':['url','url']}[name]||['text','off'];
@@ -196,105 +201,62 @@ function editorField(label, name, value, multiline = false, hint = '', context =
   const descriptions=[context,hint?name+'-hint':''].filter(Boolean).join(' '),description=descriptions?` aria-describedby="${descriptions}"`:'';
   return `<div class="field"><label for="${name}">${escape(label)} <span>${required?'required':'optional'}</span></label>${multiline ? `<textarea id="${name}" name="${name}" maxlength="16000"${description}${requirement}>${escape(value)}</textarea>` : `<input id="${name}" name="${name}" type="${purpose[0]}" autocomplete="${purpose[1]}" value="${escape(value)}" maxlength="250"${description}${requirement}>`}${hint ? `<small id="${name}-hint">${escape(hint)}</small>` : ''}</div>`;
 }
-function buildEditor(resume, prefix, full) {
-  const entryButton=(action,index,label,disabled=false)=>`<button type="button" class="secondary-button" data-master-action="${action}" data-index="${index}"${disabled?' disabled':''}>${escape(label)}</button>`;
-  const roles=resume.roles.map((r,i)=>`<details class="role-editor" ${i===0?'open':''}><summary id="${prefix}role-context-${i}">${escape([r.employer,r.title].filter(Boolean).join(' · ')||'Role '+(i+1))}</summary><div>${full?`<div class="field-row">${editorField('Employer',prefix+'employer-'+i,r.employer,false,'',prefix+'role-context-'+i)}${editorField('Dates',prefix+'dates-'+i,r.dates,false,'',prefix+'role-context-'+i)}</div>${editorField('Original job title',prefix+'title-'+i,r.title,false,'',prefix+'role-context-'+i)}`:''}${editorField('Accomplishment bullets',prefix+'bullets-'+i,r.bullets.join('\n'),true,'One complete bullet per line. No bullet symbol is needed.',prefix+'role-context-'+i)}${full?entryButton('remove-role',i,'Remove role '+(i+1),resume.roles.length===1):''}</div></details>`).join('');
-  const skills=full?`<div class="editor-section"><h3>Technical skills</h3>${resume.skills.map((s,i)=>`<div class="role-editor">${editorField('Skill group '+(i+1),prefix+'skill-group-'+i,s.group)}${editorField('Skills in group '+(i+1),prefix+'skills-'+i,s.items.join(', '),false,'Separate skills with commas.')}${entryButton('remove-skill',i,'Remove skill group '+(i+1))}</div>`).join('')}<button type="button" id="master-add-skill" class="secondary-button" data-master-action="add-skill">Add skill group</button></div>`:'';
-  const education=full?`<div class="editor-section"><h3>Education</h3>${resume.education.map((e,i)=>`<div class="role-editor"><h4 id="${prefix}education-context-${i}">${escape(e.school||'Education '+(i+1))}</h4><div class="field-row">${editorField('School',prefix+'school-'+i,e.school,false,'',prefix+'education-context-'+i)}${editorField('Date or status',prefix+'edates-'+i,e.dates,false,'',prefix+'education-context-'+i)}</div>${editorField('Degree or certificate',prefix+'qualification-'+i,e.qualification,false,'',prefix+'education-context-'+i)}${entryButton('remove-education',i,'Remove education '+(i+1))}</div>`).join('')}<button type="button" id="master-add-education" class="secondary-button" data-master-action="add-education">Add education</button></div>`:'';
-  return `${full?`<div class="editor-section"><h3>Contact details</h3><div class="field-row">${editorField('Full name',prefix+'name',resume.name)}${editorField('Email',prefix+'email',resume.email)}</div><div class="field-row">${editorField('Phone',prefix+'phone',resume.phone)}${editorField('LinkedIn URL',prefix+'linkedin',resume.linkedin)}</div></div>`:''}<div class="editor-section"><h3>Professional summary</h3>${editorField('Summary',prefix+'summary',resume.summary,true)}</div><div class="editor-section"><h3>Core competencies</h3>${editorField('Competencies',prefix+'competencies',resume.competencies.join('\n'),true,'One competency per line.')}</div><div class="editor-section"><h3>Experience</h3>${roles}${full?'<button type="button" id="master-add-role" class="secondary-button" data-master-action="add-role">Add role</button>':''}</div>${skills}${education}`;
+function buildEditor(resume,prefix){
+  const roles=resume.roles.map((r,i)=>`<details class="role-editor" ${i===0?'open':''}><summary id="${prefix}role-context-${i}">${escape([r.title,r.employer].join(' · '))}</summary><div>${editorField('Accomplishment bullets',prefix+'bullets-'+i,r.bullets.join('\n'),true,'One complete bullet per line. No bullet symbol is needed.',prefix+'role-context-'+i)}</div></details>`).join('');
+  return `<div class="editor-section"><h3>Professional summary</h3>${editorField('Summary',prefix+'summary',resume.summary,true)}</div><div class="editor-section"><h3>Core competencies</h3>${editorField('Competencies',prefix+'competencies',resume.competencies.join('\n'),true,'One competency per line.')}</div><div class="editor-section"><h3>Experience</h3>${roles}</div>`;
 }
 function lines(text) {return String(text).split('\n').map(s => s.replace(/^\s*[•*-]\s+/, '').trim()).filter(Boolean);}
-function collectEditor(resume, prefix, full, form, validate=true) {
-  const data = new FormData(form), value = key => String(data.get(prefix + key) || '').trim();
-  const next = clone(resume);
-  if (full) for (const key of ['name','email','phone','linkedin']) next[key] = value(key);
-  next.summary = value('summary'); next.competencies = lines(value('competencies'));
-  next.roles = resume.roles.map((r,i) => ({...r, ...(full ? {employer:value('employer-'+i),title:value('title-'+i),dates:value('dates-'+i)} : {}), bullets:lines(value('bullets-'+i))}));
-  if (full) {
-    next.skills = resume.skills.map((s,i) => ({...s,group:value('skill-group-'+i)||s.group||'Skills',items:value('skills-'+i).split(',').map(s => s.trim()).filter(Boolean)}));
-    next.education = resume.education.map((e,i) => ({school:value('school-'+i),dates:value('edates-'+i),qualification:value('qualification-'+i)}));
-  }
-  if(!validate)return next;
-  next.skills=next.skills.filter(s=>s.items.length);
-  if (!next.name) throw fieldError('Enter your full name.',prefix+'name');
-  if (!next.summary) throw fieldError('Enter a professional summary.',prefix+'summary');
-  if (!next.competencies.length) throw fieldError('Enter at least one competency, with one competency per line.',prefix+'competencies');
-  if (!next.roles.length) throw fieldError('Add at least one role.',full?'master-add-role':prefix+'summary');
-  for (const [i,role] of next.roles.entries()) {
-    for (const key of ['employer','title','dates']) if (!role[key]) throw fieldError(`Enter the ${key} for role ${i+1}.`,prefix+key+'-'+i);
-    if (!role.bullets.length) throw fieldError(`Enter at least one accomplishment for ${role.title} at ${role.employer}.`,prefix+'bullets-'+i);
-  }
-  for (const [i,education] of next.education.entries()) for (const [key,field] of [['school','school'],['qualification','qualification'],['dates','edates']]) if (!education[key]) throw fieldError(`Enter the ${key==='dates'?'date or status':key} for education entry ${i+1}.`,prefix+field+'-'+i);
+function collectEditor(resume,prefix,form){
+  const data=new FormData(form),value=key=>String(data.get(prefix+key)||'').trim(),next=clone(resume);
+  next.summary=value('summary');next.competencies=lines(value('competencies'));
+  next.roles=resume.roles.map((r,i)=>({...r,bullets:lines(value('bullets-'+i))}));
+  if(!next.summary)throw fieldError('Enter a professional summary.',prefix+'summary');
+  if(!next.competencies.length)throw fieldError('Enter at least one competency.',prefix+'competencies');
+  for(const [i,role] of next.roles.entries())if(!role.bullets.length)throw fieldError(`Enter at least one accomplishment for ${role.title} at ${role.employer}.`,prefix+'bullets-'+i);
   return next;
 }
-function blankRole(){return {employer:'',title:'',dates:'',bullets:[]};}
-function renderMasterDraft() {$('master-editor').innerHTML=buildEditor(masterDraft,'m-',true);}
 function showImportedText(){
-  const text=masterDraft?.importedText||'';
-  $('master-import-preview').hidden=!text;$('master-import-text').value=text;
+  const text=master.importedText||resumeText(master);
+  $('master-import-preview').hidden=!master.name;$('master-import-text').value=master.name?text:'';
 }
 function cancelMasterImport(){
   masterImportEpoch++;masterImportController?.abort();masterImportController=undefined;
-  $('master-upload').value='';$('master-upload').disabled=false;$('master-save').disabled=false;
-  $('master-import').setAttribute('aria-busy','false');$('cancel-master-import').hidden=true;
-  $('restore-master').disabled=!masterReady()&&!masterDraft?.importedText;
+  $('master-upload').value='';$('master-upload').disabled=false;
+  $('master-import').setAttribute('aria-busy','false');$('restore-master').disabled=!master.name;
 }
-function openMaster(event) {
+function openMaster(event){
   if(privateVault.exists()&&!privateUnlocked){openPrivacy();return;}
   cancelMasterImport();$('master-import-status').textContent='';clearError('master-import-error');
-  masterDraft=clone(master);if(!masterDraft.roles.length)masterDraft.roles.push(blankRole());
-  $('master-heading').textContent=masterReady()?'Edit your master resume':'Add your master resume';
-  $('restore-master').disabled=!masterReady();renderMasterDraft();showImportedText();clearError('master-error');
+  $('master-heading').textContent='Master resume';showImportedText();
   openDialog(document,'master-dialog',event.currentTarget);
 }
 $('master-upload').addEventListener('change',async()=>{
   const file=$('master-upload').files?.[0];if(!file)return;
-  cancelMasterImport();clearError('master-import-error');clearError('master-error');
+  cancelMasterImport();clearError('master-import-error');
   const epoch=masterImportEpoch,controller=new AbortController();masterImportController=controller;
-  $('master-upload').disabled=true;$('master-save').disabled=true;$('restore-master').disabled=false;
-  $('cancel-master-import').hidden=false;$('master-import').setAttribute('aria-busy','true');
-  $('master-import-status').textContent='Reading your resume in this browser…';
+  $('master-upload').disabled=true;$('restore-master').disabled=false;$('master-import').setAttribute('aria-busy','true');
+  $('master-import-status').textContent='Reading and saving your resume in this browser…';
   try{
-    const text=await extractResumeText(file,{signal:controller.signal});
+    let formatting;const text=await extractResumeText(file,{signal:controller.signal,onFormatting:style=>{formatting=style;}});
     if(epoch!==masterImportEpoch||controller.signal.aborted||!$('master-dialog').open)return;
-    masterDraft=parseResumeText(text);masterDraft.importedFileName=String(file.name).slice(0,250);
-    renderMasterDraft();showImportedText();
-    $('master-import-status').textContent='Resume imported into an editable draft. Review every field against the extracted text, complete missing details, then choose Save master resume.';
-    focusElement($('m-name'));
+    const uploaded=parseResumeText(text);uploaded.formatting=formatting;uploaded.importedFileName=String(file.name).slice(0,250);
+    if(!validMaster(uploaded)||!uploaded.name.trim()||!uploaded.summary.trim()||!uploaded.competencies.length||!uploaded.roles.every(r=>r.employer.trim()&&r.title.trim()&&r.dates.trim()&&r.bullets.length))throw new Error('The file needs a recognizable name, professional summary, skills, and job headings with role, company, years and accomplishments. Revise the source file and upload it again.');
+    const saved=await storeValue(MASTER_KEY,uploaded);
+    if(epoch!==masterImportEpoch||controller.signal.aborted||!$('master-dialog').open)return;
+    master=uploaded;refreshView();showImportedText();
+    $('master-import-status').textContent=saved?'Master resume uploaded and saved. You can tailor documents now. '+(formatting?.layoutNote||''):'Master resume is ready in this tab. Browser storage could not save it; keep your source file and download documents before closing this tab.';
+    focusElement($('restore-master'));
   }catch(error){
-    if(epoch===masterImportEpoch&&!controller.signal.aborted){$('master-upload').disabled=false;$('master-import-status').textContent='Your saved master resume has not changed.';showError('master-import-error',fieldError(error.message||'The resume could not be imported. Try plain text or enter your details manually.','master-upload'));}
+    if(epoch===masterImportEpoch&&!controller.signal.aborted){$('master-upload').disabled=false;$('master-import-status').textContent='Your saved master resume has not changed.';showError('master-import-error',fieldError(error.message||'The resume could not be uploaded. Try a text-based file.','master-upload'));}
   }finally{
-    if(epoch===masterImportEpoch){masterImportController=undefined;$('master-upload').disabled=false;$('master-save').disabled=false;$('cancel-master-import').hidden=true;$('master-import').setAttribute('aria-busy','false');$('restore-master').disabled=!masterReady()&&!masterDraft?.importedText;}
+    if(epoch===masterImportEpoch){masterImportController=undefined;$('master-upload').disabled=false;$('master-import').setAttribute('aria-busy','false');$('restore-master').disabled=!master.name;}
   }
 });
-$('cancel-master-import').addEventListener('click',()=>{cancelMasterImport();$('master-import-status').textContent='Import canceled. Your saved master resume has not changed.';focusElement($('master-upload'));});
 $('master-dialog').addEventListener('close',()=>{cancelMasterImport();$('master-import-text').value='';$('master-import-preview').hidden=true;});
-$('master-editor').addEventListener('click',event=>{
-  const button=event.target.closest('[data-master-action]');if(!button||button.disabled||!masterDraft)return;
-  masterDraft=collectEditor(masterDraft,'m-',true,$('master-form'),false);
-  const action=button.dataset.masterAction,index=Number(button.dataset.index);let focusId;
-  const types={role:['roles',blankRole,'employer',30],skill:['skills',()=>({group:'',items:[]}),'skill-group',20],education:['education',()=>({school:'',qualification:'',dates:''}),'school',20]};
-  const [operation,type]=action.split('-'),config=types[type];if(!config)return;
-  const [key,empty,field,limit]=config;
-  if(operation==='add'){
-    if(masterDraft[key].length>=limit){toast('You have reached the '+limit+' entry limit for '+type+'.');return;}
-    masterDraft[key].push(empty());focusId='m-'+field+'-'+(masterDraft[key].length-1);
-  }else if(operation==='remove'&&Number.isInteger(index)&&index>=0&&index<masterDraft[key].length){
-    if(key==='roles'&&masterDraft.roles.length===1)return;
-    masterDraft[key].splice(index,1);focusId='master-add-'+type;
-  }else return;
-  renderMasterDraft();clearError('master-error');const fieldElement=$(focusId);
-  const details=fieldElement?.closest('details');if(details)details.open=true;focusElement(fieldElement);
-});
-for (const id of ['open-master','source-edit','edit-master-inline']) $(id).addEventListener('click', openMaster);
-$('master-form').addEventListener('submit', async event => {
-  event.preventDefault(); clearError('master-error');
-  if(masterImportController)return;
-  try {master = collectEditor(masterDraft,'m-',true,event.currentTarget); master.source = master.importedText?'Uploaded master resume':'Edited master resume'; const saved=await storeValue(MASTER_KEY,master); closeDialog(document,'master-dialog'); refreshView(); toast(saved?'Master resume saved. Tailor again to use your updated experience.':'Master resume is ready in this tab. Browser storage is unavailable; download your documents before closing it.');}
-  catch(error) {showError('master-error',error);}
-});
+for(const id of ['open-master','source-edit','edit-master-inline'])$(id).addEventListener('click',openMaster);
 $('restore-master').addEventListener('click', async () => {
-  if(!confirm('Clear this browser’s master resume and current workspace? Saved application versions remain available.'))return;
+  if(!confirm('Clear this browser’s master resume and remove its prior information from the current workspace? Saved application versions remain available.'))return;
+  cancelMasterImport();
   master=createBlankMaster();const cleared=await storeValue(MASTER_KEY,master);resetWorkspace();toast(cleared?'Your master resume is now blank. Saved application versions remain available.':'Your master resume is blank in this tab. Browser storage could not be updated, so the previous master may return after reopening.');
 });
 
@@ -305,12 +267,12 @@ $('edit-output').addEventListener('click', event => {
     $('cover-editor').innerHTML=editorField('Date','c-date',letter.date)+editorField('Company','c-company',letter.company||'')+editorField('Subject','c-subject',letter.subject||'')+editorField('Greeting','c-salutation',letter.salutation)+'<p id="cover-paragraph-guide" class="dialog-intro">Keep at least one paragraph. Blank paragraphs are omitted from the letter.</p>'+letter.paragraphs.map((p,i)=>editorField('Paragraph '+(i+1),'c-paragraph-'+i,p,true,'','cover-paragraph-guide')).join('')+editorField('Closing','c-closing',letter.closing)+editorField('Signature','c-signature',letter.signature);
     clearError('cover-error');openDialog(document,'cover-edit-dialog',event.currentTarget);return;
   }
-  $('output-editor').innerHTML = buildEditor(current.resume,'o-',false); clearError('output-error'); openDialog(document,'edit-dialog',event.currentTarget);
+  $('output-editor').innerHTML = buildEditor(current.resume,'o-'); clearError('output-error'); openDialog(document,'edit-dialog',event.currentTarget);
 });
 $('output-form').addEventListener('submit', event => {
   event.preventDefault(); clearError('output-error'); if (!current) return;
   try {
-    const polished=polishResume(collectEditor(current.resume,'o-',false,event.currentTarget)),updated=polished.resume;
+    const polished=polishResume(collectEditor(current.resume,'o-',event.currentTarget)),updated=polished.resume;
     const oldText = resumeText(current.resume), newText = resumeText(updated);
     if (oldText !== newText) {
       current.changes.push({section:'Your manual edits',description:'You edited this version. Confirm that every added claim is accurate.',before:oldText,after:newText});
@@ -425,13 +387,13 @@ if(storageUnavailable)showStorageNotice();
 
 function resetWorkspace({keepHistoryOpen=false}={}) {
   cancelMasterImport();$('master-import-text').value='';$('master-import-preview').hidden=true;$('master-import-status').textContent='';clearError('master-import-error');
-  workspaceEpoch++;current=null;activeTab='resume';masterDraft=null;
+  workspaceEpoch++;current=null;activeTab='resume';
   for(const id of ['job-description','job-title','company','extra-keywords'])$(id).value='';
   $('length').value='balanced';$('export-document').value='resume';$('ats-platform').value='general';
   document.querySelector('.options').open=false;
-  for(const id of ['form-error','master-error','output-error','cover-error'])clearError(id);
+  for(const id of ['form-error','output-error','cover-error'])clearError(id);
   for(const dialog of document.querySelectorAll('dialog[open]'))if(!keepHistoryOpen || dialog.id!=='history-dialog')closeDialog(document,dialog.id);
-  for(const id of ['master-editor','output-editor','cover-editor'])$(id).innerHTML='';
+  for(const id of ['output-editor','cover-editor'])$(id).innerHTML='';
   $('copy-text').value='';$('save-filename').textContent='';$('save-status').textContent='';$('save-ats-note').textContent='';
   releaseDownload?.();releaseDownload=undefined;
   for(const id of ['save-file','save-browser'])$(id).removeAttribute('href');
@@ -454,7 +416,7 @@ function openPrivacy(){
 }
 async function lockPrivacy(wait=true){
   if(wait){try{await privateVault.flush();}catch{}}
-  privateVault.lock();privateUnlocked=false;master=createBlankMaster();history=[];masterDraft=null;resetWorkspace();refreshView();
+  privateVault.lock();privateUnlocked=false;master=createBlankMaster();history=[];resetWorkspace();refreshView();
   try{sessionStorage.removeItem('lw-resume-studio-export-v1');for(let i=sessionStorage.length-1;i>=0;i--){const key=sessionStorage.key(i);if(key?.startsWith('lw-resume-studio-transfer-'))sessionStorage.removeItem(key);}}catch{}
   toast('Private workspace locked. Unlock it with your passphrase to restore saved data.');
 }

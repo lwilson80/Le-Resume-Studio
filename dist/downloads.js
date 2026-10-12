@@ -28,7 +28,7 @@ export function validateDownloadPayload(p) {
 export function createDownloadPayload(version,kind,format) {
   const r=version.resume;
   const resume={name:r.name,phone:r.phone||'',email:r.email||'',linkedin:r.linkedin||''};
-  if (kind==='resume') Object.assign(resume,{summary:r.summary,competencies:r.competencies,roles:r.roles.map(role=>({employer:role.employer,title:role.title,dates:role.dates,bullets:role.bullets,headerOrder:roleHeaderFields(role)})),skills:r.skills.map(({group,items})=>({group,items})),education:r.education.map(({school,qualification,dates})=>({school,qualification,dates}))});
+  if (kind==='resume') Object.assign(resume,{summary:r.summary,competencies:r.competencies,roles:r.roles.map(role=>({employer:role.employer,title:role.title,dates:role.dates,bullets:role.bullets,headerOrder:roleHeaderFields(role)})),skills:r.skills.map(({group,items})=>({group,items})),...(r.formatting?{formatting:r.formatting}:{}),education:r.education.map(({school,qualification,dates})=>({school,qualification,dates}))});
   const c=version.coverLetter;
   const letter=kind==='cover'?{date:c.date,company:c.company||'',subject:c.subject||'',salutation:c.salutation,paragraphs:c.paragraphs,closing:c.closing,signature:c.signature}:null;
   const name=[r.name,version.title||'Tailored',version.company,kind==='cover'?'Cover Letter':'Resume'].filter(Boolean).join('_').replace(/[^a-zA-Z0-9_\- ]/g,'').replace(/\s+/g,'_').slice(0,160)+'.'+format;

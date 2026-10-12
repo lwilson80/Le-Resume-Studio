@@ -44,7 +44,7 @@ test('Returning visitor starts with a blank workspace, tailors from their saved 
   await get('tab-keywords').dispatch('click');
   assert.equal(get('keywords-panel').hidden,false);assert.equal(get('resume-panel').hidden,true);
   await get('open-master').dispatch('click');assert.equal(get('master-dialog').open,true);
-  assert.ok(get('master-editor').innerHTML.includes('Mortgage Insurance Operations Analyst'));
+  assert.ok(get('master-import-text').value.includes('Mortgage Insurance Operations Analyst'));
   await get('open-history').dispatch('click');assert.ok(get('history-list').innerHTML.includes('Test Company'));
 });
 
@@ -68,7 +68,7 @@ test('Opening the app ignores and removes old drafts while preserving the master
   assert.equal(ui.values.get('lw-resume-studio-master-v1'),stored['lw-resume-studio-master-v1']);
   assert.equal(ui.values.get('lw-resume-studio-history-v1'),stored['lw-resume-studio-history-v1']);
   assert.equal(ui.get('history-count').textContent,'1');
-  await ui.get('open-master').dispatch('click');assert.equal(ui.get('m-name').value,'My Updated Name');
+  await ui.get('open-master').dispatch('click');assert.equal(ui.get('profile-name').textContent,'My Updated Name');
   await ui.get('history-list').dispatch('click',{target:{closest:()=>({dataset:{openVersion:'0'}})}});
   assert.equal(ui.get('job-description').value,resetJd);assert.ok(ui.get('resume-document').innerHTML.includes('MY UPDATED NAME'));
 });
@@ -126,7 +126,7 @@ test('Clear saved versions deletes both documents on one click, revokes prepared
   assert.equal(ui.values.get('lw-resume-studio-master-v1'),stored['lw-resume-studio-master-v1']);assert.equal(ui.values.get('unrelated-setting'),'keep this');
   await ui.get('history-list').dispatch('click',{target:{closest:()=>({dataset:{openVersion:'1'}})}});assertBlankWorkspace(ui);
   ui=await setup(Object.fromEntries(ui.values));assertBlankWorkspace(ui);assert.equal(ui.get('history-count').textContent,'0');
-  await ui.get('open-master').dispatch('click');assert.equal(ui.get('m-name').value,'My Updated Name');
+  await ui.get('open-master').dispatch('click');assert.equal(ui.get('profile-name').textContent,'My Updated Name');
 });
 test('Clearing saved versions cancels in-flight tailoring so deleted applications cannot reappear',async()=>{
   const version=tailorResume(MASTER_RESUME,resetJd,{company:'Delete This Company'});
@@ -211,10 +211,10 @@ test('Stored contact text is safely escaped and corrupt storage falls back to a 
   const altered=structuredClone(MASTER_RESUME);altered.name='<img src=x onerror=alert(1)>';
   let ui=await setup({'lw-resume-studio-master-v1':JSON.stringify(altered)});
   await ui.get('open-master').dispatch('click');
-  assert.ok(ui.get('master-editor').innerHTML.includes('&lt;img'));
-  assert.ok(!ui.get('master-editor').innerHTML.includes('<img'));
+  assert.ok(ui.get('master-import-text').value.toLowerCase().includes('<img'));
+  assert.equal(ui.get('master-import-text').children.length,0);
   ui=await setup({'lw-resume-studio-master-v1':'{"name":"Broken","roles":[null]}','lw-resume-studio-history-v1':'oops'});
-  await ui.get('open-master').dispatch('click');assert.equal(ui.get('m-name').value,'');
+  await ui.get('open-master').dispatch('click');assert.equal(ui.get('master-import-text').value,'');
 });
 test('Inside ChatGPT, export offers a browser page carrying the edited document',async()=>{
   const version=tailorResume(MASTER_RESUME,'A Business Applications Analyst will support application enhancements, UAT, requirements analysis, root cause analysis, training and technical documentation. Build reports and work with stakeholders.',{title:'Business Applications Analyst',company:'Current Company'});

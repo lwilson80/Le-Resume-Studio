@@ -103,11 +103,7 @@ test('Every dialog initially focuses its heading and returns focus on close, inc
 });
 test('Generated editors retain labels, required indicators, field purposes and per-role context',async()=>{
   const {get}=await setup();await get('open-master').dispatch('click');
-  auditSemantics(get('master-editor').innerHTML);
-  for(const [id,type,autocomplete] of [['m-name','text','name'],['m-email','email','email'],['m-phone','tel','tel'],['m-linkedin','url','url']]) {
-    assert.equal(get(id).attrs.type,type);assert.equal(get(id).attrs.autocomplete,autocomplete);
-  }
-  assert.equal(get('m-bullets-1').attrs['aria-describedby'],'m-role-context-1 m-bullets-1-hint');
+  assert.equal(get('master-upload').attrs['aria-describedby'],'master-upload-help');assert.ok(Object.hasOwn(get('master-import-text').attrs,'readonly'));
   get('master-dialog').close();get('job-description').value=jd;await get('tailor-form').dispatch('submit');
   await get('edit-output').dispatch('click');auditSemantics(get('output-editor').innerHTML);get('edit-dialog').close();
   await get('tab-cover').dispatch('click');await get('edit-output').dispatch('click');auditSemantics(get('cover-editor').innerHTML);
@@ -117,14 +113,11 @@ async function withFormData(doc,action) {
   const prior=globalThis.FormData;globalThis.FormData=class{get(name){return doc.getElementById(name)?.value;}};
   try{await action();}finally{globalThis.FormData=prior;}
 }
-test('An error inside a closed role expands it, focuses the correct field, and clears while preserving context',async()=>{
-  const {get,doc}=await setup();await get('open-master').dispatch('click');
-  const field=get('m-bullets-1'),role=field.closest('details');assert.equal(role.open,false);field.value='';
-  await withFormData(doc,()=>get('master-form').dispatch('submit'));
-  assert.equal(role.open,true);assert.equal(doc.activeElement,field);assert.equal(field.attrs['aria-invalid'],'true');
-  assert.match(field.attrs['aria-describedby'],/m-role-context-1 m-bullets-1-hint master-error/);
-  await get('master-form').dispatch('input');assert.equal(field.attrs['aria-invalid'],undefined);
-  assert.equal(field.attrs['aria-describedby'],'m-role-context-1 m-bullets-1-hint');
+test('Output-role errors expand the closed role and preserve accessible field context',async()=>{
+  const {get,doc}=await setup();get('job-description').value=jd;await get('tailor-form').dispatch('submit');await get('edit-output').dispatch('click');
+  const field=get('o-bullets-1'),role=field.closest('details');assert.equal(role.open,false);field.value='';
+  await withFormData(doc,()=>get('output-form').dispatch('submit'));assert.equal(role.open,true);assert.equal(doc.activeElement,field);assert.equal(field.attrs['aria-invalid'],'true');
+  assert.match(field.attrs['aria-describedby'],/o-role-context-1 o-bullets-1-hint output-error/);await get('output-form').dispatch('input');assert.equal(field.attrs['aria-invalid'],undefined);
 });
 test('Cover letter errors focus the actual required field and do not overwrite the saved letter',async()=>{
   const {get,doc,values}=await setup();get('job-description').value=jd;await get('tailor-form').dispatch('submit');

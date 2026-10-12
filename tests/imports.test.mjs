@@ -40,29 +40,24 @@ test('Actual generated Word and PDF resumes can be extracted and reviewed',async
     const parsed=parseResumeText(imported);assert.equal(parsed.email,own.email);assert.equal(parsed.roles[0].employer,'Example Company');assert.equal(parsed.roles[0].title,'Business Analyst');assert.ok(parsed.roles[0].bullets.length>=2);
   }
 });
-test('Uploading prepares an editable draft, saving persists it, and removing it stays blank after reopening',async()=>{
-  let ui=await setup({},false,{fresh:true});await ui.get('open-master').dispatch('click');
-  ui.get('master-upload').files=[file(plain)];await ui.get('master-upload').dispatch('change');
-  assert.equal(ui.values.has(key),false);assert.equal(ui.get('tailor-button').disabled,true);assert.equal(ui.get('m-email').value,own.email);
-  assert.equal(ui.get('master-import-preview').hidden,false);assert.equal(ui.get('master-import-text').value,plain.trim());assert.equal(ui.doc.activeElement,ui.get('m-name'));
-  await withFormData(ui.doc,()=>ui.get('master-form').dispatch('submit'));
-  assert.equal(JSON.parse(ui.values.get(key)).source,'Uploaded master resume');assert.equal(ui.get('tailor-button').disabled,false);
-  await ui.get('open-master').dispatch('click');await ui.get('restore-master').dispatch('click');
-  assert.deepEqual(JSON.parse(ui.values.get(key)),createBlankMaster());assert.equal(ui.get('master-import-text').value,'');
-  ui=await setup(Object.fromEntries(ui.values),false,{fresh:true});await ui.get('open-master').dispatch('click');assert.equal(ui.get('m-name').value,'');assert.equal(ui.get('master-import-preview').hidden,true);
+test('Uploading saves automatically and deletion stays blank after reopening',async()=>{
+  let ui=await setup({},false,{fresh:true});await ui.get('open-master').dispatch('click');ui.get('master-upload').files=[file(plain)];await ui.get('master-upload').dispatch('change');
+  assert.equal(JSON.parse(ui.values.get(key)).source,'Uploaded master resume');assert.equal(ui.get('tailor-button').disabled,false);assert.equal(ui.get('master-import-text').value,plain.trim());assert.equal(ui.doc.activeElement,ui.get('restore-master'));
+  await ui.get('restore-master').dispatch('click');assert.deepEqual(JSON.parse(ui.values.get(key)),createBlankMaster());assert.equal(ui.get('master-import-text').value,'');
+  ui=await setup(Object.fromEntries(ui.values),false,{fresh:true});await ui.get('open-master').dispatch('click');assert.equal(ui.get('master-import-preview').hidden,true);
 });
 test('Clearing while an upload is pending prevents old file contents from repopulating the master',async()=>{
   const ui=await setup({},false,{fresh:true});await ui.get('open-master').dispatch('click');
   let finish;const pending=new Promise(resolve=>{finish=resolve;});
   ui.get('master-upload').files=[{name:'resume.txt',size:100,arrayBuffer:()=>pending}];
-  const importing=ui.get('master-upload').dispatch('change');assert.equal(ui.get('master-save').disabled,true);
+  const importing=ui.get('master-upload').dispatch('change');assert.equal(ui.get('master-upload').disabled,true);
   await ui.get('restore-master').dispatch('click');finish(new TextEncoder().encode(plain).buffer);await importing;
-  assert.deepEqual(JSON.parse(ui.values.get(key)),createBlankMaster());assert.equal(ui.get('master-import-text').value,'');assert.equal(ui.get('master-editor').innerHTML,'');
+  assert.deepEqual(JSON.parse(ui.values.get(key)),createBlankMaster());assert.equal(ui.get('master-import-text').value,'');assert.equal(ui.doc.getElementById('master-editor'),null);
 });
 test('Bad uploads preserve a saved master and focus the file input with an accessible error',async()=>{
   const ui=await setup({[key]:JSON.stringify(own)},false,{fresh:true});await ui.get('open-master').dispatch('click');
   ui.get('master-upload').files=[file('unreadable','resume.doc')];await ui.get('master-upload').dispatch('change');
-  assert.deepEqual(JSON.parse(ui.values.get(key)),own);assert.equal(ui.doc.activeElement,ui.get('master-upload'));assert.equal(ui.get('master-import-error').hidden,false);assert.equal(ui.get('master-save').disabled,false);
+  assert.deepEqual(JSON.parse(ui.values.get(key)),own);assert.equal(ui.doc.activeElement,ui.get('master-upload'));assert.equal(ui.get('master-import-error').hidden,false);assert.equal(ui.get('master-upload').disabled,false);
 });
 
 test('Every final accomplishment stays with its role, including short text and years, before the next heading',()=>{

@@ -230,6 +230,8 @@ function openMaster(event){
   $('master-heading').textContent='Master resume';showImportedText();
   openDialog(document,'master-dialog',event.currentTarget);
 }
+// Clear the native picker before opening it so selecting the same file emits change.
+$('master-upload').addEventListener('click',()=>{if(!$('master-upload').disabled)$('master-upload').value='';});
 $('master-upload').addEventListener('change',async()=>{
   const file=$('master-upload').files?.[0];if(!file)return;
   cancelMasterImport();clearError('master-import-error');
@@ -249,7 +251,7 @@ $('master-upload').addEventListener('change',async()=>{
   }catch(error){
     if(epoch===masterImportEpoch&&!controller.signal.aborted){$('master-upload').disabled=false;$('master-import-status').textContent='Your saved master resume has not changed.';showError('master-import-error',fieldError(error.message||'The resume could not be uploaded. Try a text-based file.','master-upload'));}
   }finally{
-    if(epoch===masterImportEpoch){masterImportController=undefined;$('master-upload').disabled=false;$('master-import').setAttribute('aria-busy','false');$('restore-master').disabled=!master.name;}
+    if(epoch===masterImportEpoch){masterImportController=undefined;$('master-upload').value='';$('master-upload').disabled=false;$('master-import').setAttribute('aria-busy','false');$('restore-master').disabled=!master.name;}
   }
 });
 $('master-dialog').addEventListener('close',()=>{cancelMasterImport();$('master-import-text').value='';$('master-import-preview').hidden=true;});

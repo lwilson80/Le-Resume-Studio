@@ -49,3 +49,7 @@ Imports retain each final accomplishment within its job and preserve uploaded ro
 ## Upload-only source and formatting — version 16
 
 Word and PDF uploads retain detected typography, supported section order and role/company/year headings. PDF uses compatible embedded font families. Complex tables, graphics, columns and exact original pagination are not reproduced. TXT and RTF use a single-column Arial 11-point template with 0.75-inch margins, consistent headings and action bullets. See [MIT resume checklist](https://capd.mit.edu/resources/resume-checklist/). The release passed 124 automated tests; real browser and ATS certification are not claimed.
+
+## Repeat uploads — version 17
+
+Select the same source resume file as often as needed, without changing its filename or applicant name. The native picker is cleared before opening and after upload completion. Each successful upload replaces the current master; failed or canceled selections preserve it. Uploading alone does not create saved application versions. The release passes 126 automated checks, including repeat reads, corrected same-name files, failed retry and cancellation. Native Safari/mobile picker interactions remain unverified.

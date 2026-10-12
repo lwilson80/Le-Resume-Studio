@@ -120,7 +120,7 @@ def base(kind, opening):
     d.core_properties.title = 'Le Resume Studio '+kind
     d.core_properties.author = 'Marabou Lane LLC'; d.core_properties.subject = opening[:255]
     para(d, 'Le Resume Studio', 'Title'); para(d, kind, 'Subtitle')
-    para(d, DATE+'  |  Published app version 16')
+    para(d, DATE+'  |  Published app version 17')
     para(d, opening)
     return d
 
@@ -142,7 +142,7 @@ def tutorial():
         ('Experience','For each role, enter employer, original job title, dates, and at least one accomplishment. Include readable accomplishment bullets.'),
         ('Skills and education','Add skill groups if needed and separate their skills with commas. Add education entries if needed; each added entry needs a school, qualification, and date or status.')
     ], [1.45,5.55])
-    para(d, 'A complete readable upload saves automatically. Expand View uploaded resume text to inspect the read-only extraction. Final accomplishments stay with their role; job headings retain the uploaded role, company and year order. To correct the source, edit your original file and upload it again. Failed uploads preserve the prior master.')
+    para(d, 'A complete readable upload saves automatically. Expand View uploaded resume text to inspect the read-only extraction. Final accomplishments stay with their role; job headings retain the uploaded role, company and year order. To correct the source, edit your original file and upload it again. You may select the same file repeatedly without changing its filename or applicant name. Failed uploads preserve the prior master.')
     para(d, 'Choose Clear Master Resume to remove the saved source, extracted text, selected file and current workspace after confirmation. It cancels a pending import and keeps the source blank after reopening. Saved applications are removed separately with Clear saved versions. Use only substantiated experience. Word and PDF uploads retain detected typography and supported structure; complex layouts and exact pagination can change. TXT and RTF use a professional single-column template.')
 
     new_page(d, 'Protect your private workspace')
@@ -281,7 +281,7 @@ def developer():
     code(d, 'validateResumeFile(file) -> extension or throws\nextractResumeText(file, {signal, loadZip, loadPDF, onFormatting} = {})\n  -> Promise<string>\nparseResumeText(text) -> parsed source object')
     para(d, 'File validation accepts PDF, DOCX, TXT and RTF with a 10 MB limit. TXT is strict UTF-8. RTF decodes Windows-1252 and supported Unicode controls, excludes metadata and embedded objects, and never executes content. DOCX uses JSZip with a 30 MB expanded archive limit. PDF.js reads up to 30 pages with evaluation disabled and local assets. No OCR is provided. Text is capped at 200,000 characters.')
     para(d, 'Parsing recognizes common sections and confirmed three-field employment headings. Word numbering preserves bullet markers; PDF text is ordered by row and horizontal position. Until a complete next heading is confirmed, text remains with the current role, including its final accomplishment. headerOrder preserves role, employer and date order. A complete upload saves automatically; missing required facts produce an error without replacing the prior saved source.')
-    para(d, 'app.js guards reads with an epoch and AbortController. Clear, dialog close and workspace reset invalidate pending reads; late completion cannot restore deleted content. Upload disables the picker while reading; Clear remains available to cancel a pending read. Progress, associated errors and a read-only text view support keyboard access. Clear resets the file selection, extracted text, master marker and current output; stored versions remain separate.')
+    para(d, 'app.js guards reads with an epoch and AbortController. Clear, dialog close and workspace reset invalidate pending reads; late completion cannot restore deleted content. Upload disables the picker while reading; Clear can cancel a pending read. The input clears before its chooser opens and after completion, allowing repeated selection of the same file. Filename and applicant name are never duplicate blockers. Progress, associated errors and a read-only text view support keyboard access. Clear resets the file selection, extracted text, master marker and current output; stored versions remain separate.')
     para(d, 'PDF.js and its worker must be served as modules with standard_fonts and licenses. Readers load only when needed. If DOCX or PDF reading fails, revise the file or upload TXT or RTF; manual master entry is unavailable. formatting.js normalizes bounded typography, margins, page size, labels and section order. Word uses detected font settings; PDF infers a compatible serif, sans or mono family. Tables, graphics and arbitrary original positions are not reproduced.')
 
     para(d, 'TXT and RTF use a single column, Arial 11 point and 0.75 inch margins, within MIT recommended font and margin ranges. This fallback does not guarantee ATS acceptance.')
@@ -353,7 +353,7 @@ def developer():
 
     new_page(d, '8 Verification deployment and maintenance')
     h(d, 'Checks and release procedure', 2)
-    para(d, 'The upload and source formatting release passed 124 node:test checks on October 12 2026. Tests cover tailoring evidence, both document scores, English rules, actual export bytes, transfers, save failures, history deletion, reset guards, keyboard semantics, capability fallbacks, and seven fresh-master journeys. DOM adapters and capability simulations do not substitute for browser rendering or real ATS uploads.')
+    para(d, 'The upload and source formatting release passed 126 node:test checks on October 12 2026. Tests cover tailoring evidence, both document scores, English rules, actual export bytes, transfers, save failures, history deletion, reset guards, keyboard semantics, capability fallbacks, and seven fresh-master journeys. DOM adapters and capability simulations do not substitute for browser rendering or real ATS uploads.')
     steps(d, [
         'Run npm test. If export code changes, also run the applicable export-check scripts and inspect actual Word/PDF output, extracted text, page breaks, and fonts.',
         'Confirm dist contains only deployable assets. Keep tests and personal fixtures out of the hosting archive. Review README, ATS_COMPATIBILITY, ACCESSIBILITY, and BROWSER_COMPATIBILITY when behavior changes.',
@@ -405,7 +405,7 @@ def browsers():
     h(d, 'Sharing is missing or fails', 2)
     para(d, 'Absence of Share file is expected if exact-file sharing is unsupported or the app is embedded. configureShareButton checks canShare before displaying it and invokes share directly from a user click. A permissions policy or loss of transient activation can reject sharing [2]. Cancellation leaves the download available. Promise resolution is not treated as proof of a file saved to the device.')
     new_page(d, 'Master resume upload troubleshooting')
-    para(d, 'Upload DOCX, text-based PDF, UTF-8 TXT or RTF. Limits are 10 MB, 30 PDF pages and 200,000 extracted characters. Convert older .doc files, remove PDF passwords and use text copies of scans. Uploads save automatically when required facts are recognized. View uploaded resume text is read-only. Correct the original file and reupload if parsing misses facts. Clear Master Resume deletes the master and current output, cancels pending imports and stays blank after reopening; saved versions remain separate.')
+    para(d, 'Upload DOCX, text-based PDF, UTF-8 TXT or RTF. Limits are 10 MB, 30 PDF pages and 200,000 extracted characters. Convert older .doc files, remove PDF passwords and use text copies of scans. Uploads save automatically when required facts are recognized. View uploaded resume text is read-only. Correct the original file and reupload if parsing misses facts; the same filename and applicant name are accepted on every attempt. Clear Master Resume deletes the master and current output, cancels pending imports and stays blank after reopening; saved versions remain separate.')
     para(d, 'For PDF failures, check local PDF.js modules, standard fonts, MIME types and worker policy. For DOCX, check JSZip. Readers do not upload resume contents. A cloud-picked file must be downloadable by the browser. If a reader fails, use TXT or RTF. Word and PDF styling is detected conservatively; missing fonts use compatible replacements. Native Safari, Chrome, mobile and assistive-technology upload interactions still require real-device checks.')
     h(d, 'Word or PDF export fails while Plain text works', 2)
     para(d, 'Check browser.js loadExportLibrary and network responses for vendor/docx.js or vendor/pdf-lib.min.js. Libraries are loaded on demand, concurrent requests are deduplicated, and a failed load can be retried. PDF generation also needs the vendored font programs. Serve correct JavaScript MIME types over HTTP/HTTPS and check for missing files, policy blocks, or rejected fetches. Plain text has no export-library dependency.')
@@ -448,7 +448,7 @@ def browsers():
     para(d, 'Acceptance check: use a real phone keyboard in tailored editors, upload and clear a master, rotate the device, zoom, inspect long text and filenames, open dialogs and use review tabs by keyboard and screen reader. Test VoiceOver on Safari, TalkBack on Android and a desktop screen reader with supported browsers.')
 
     new_page(d, '5 Device verification and issue reporting')
-    para(d, 'Automated evidence for this release is 124 passing tests, including upload, save, clear and real Word/PDF extraction checks. Actual device rendering, native save/share experiences, assistive technology, and uploads into the listed ATS systems remain unverified. Record results before advertising complete compatibility or accessibility conformance.')
+    para(d, 'Automated evidence for this release is 126 passing tests, including upload, repeated same-file selection, clear and real Word/PDF extraction checks. Actual device rendering, native save/share experiences, assistive technology, and uploads into the listed ATS systems remain unverified. Record results before advertising complete compatibility or accessibility conformance.')
     table(d, ['Test environment','Priority journeys'], [
         ('Safari on macOS','Fresh master, complete tailoring/editing, all formats, clipboard fallback, zoom, keyboard and VoiceOver.'),
         ('Safari on iPhone and iPad','Keyboard viewport, rotation, safe areas, large text, downloads/previews, Share file if offered, VoiceOver.'),

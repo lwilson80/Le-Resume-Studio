@@ -96,3 +96,24 @@ test('Word, PDF and text exports retain the source role/company/year heading ord
     }
   }
 });
+
+
+test('The same resume file can be uploaded repeatedly without changing filename or applicant name',async()=>{
+  const ui=await setup({},false,{fresh:true});await ui.get('open-master').dispatch('click');const input=ui.get('master-upload');
+  let reads=0;const same=file(plain,'resume.txt'),nativeRead=same.arrayBuffer.bind(same);same.arrayBuffer=()=>{reads++;return nativeRead();};
+  for(let attempt=0;attempt<3;attempt++){
+    input.value='C:/fakepath/resume.txt';await input.dispatch('click');assert.equal(input.value,'');
+    input.value='C:/fakepath/resume.txt';input.files=[same];await input.dispatch('change');
+    assert.equal(input.value,'');assert.equal(input.disabled,false);assert.equal(ui.get('master-import-error').hidden,true);
+    const saved=JSON.parse(ui.values.get(key));assert.equal(saved.importedFileName,'resume.txt');assert.equal(saved.name,'AVERY TAYLOR');assert.equal(saved.importedText,plain.trim());
+  }
+  assert.equal(reads,3);assert.equal(ui.get('history-count').textContent,'0');
+});
+test('Corrected contents under the same filename replace the master and failed retries keep the prior source',async()=>{
+  const ui=await setup({},false,{fresh:true});await ui.get('open-master').dispatch('click');const input=ui.get('master-upload');
+  const select=async text=>{await input.dispatch('click');input.value='C:/fakepath/resume.txt';input.files=[file(text,'resume.txt')];await input.dispatch('change');};
+  await select(plain);const first=ui.values.get(key);await select('unreadable');assert.equal(ui.values.get(key),first);assert.equal(input.value,'');
+  const updated=plain.replace('Analyzed requirements and SQL reports.','Analyzed revised requirements and SQL reports.');await select(updated);
+  const saved=JSON.parse(ui.values.get(key));assert.equal(saved.importedFileName,'resume.txt');assert.equal(saved.name,'AVERY TAYLOR');assert.ok(saved.roles[0].bullets[0].includes('revised'));assert.equal(ui.get('master-import-error').hidden,true);
+  await input.dispatch('click');input.files=[];await input.dispatch('change');assert.equal(JSON.parse(ui.values.get(key)).importedText,updated.trim());
+});

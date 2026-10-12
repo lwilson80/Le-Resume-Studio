@@ -5,6 +5,7 @@ import {createDownloadPayload,createExportBlob,configureSaveLink,configureShareB
 import {initializeDialogs,openDialog,closeDialog,notify,fieldError,clearFieldError,showFieldError,focusElement} from './accessibility.js';
 import {cloneData,trackViewport} from './browser.js';
 import {ATS_PLATFORMS,ATS_TEMPLATE_RULES,getATSProfile,reviewATS,reviewATSFile} from './ats.js';
+import {extractResumeText,parseResumeText} from './imports.js';
 
 const $ = id => document.getElementById(id);
 const escape = str => String(str ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -26,6 +27,7 @@ history = history.filter(v => v && validMaster(v.resume) && validMaster(v.master
 const explicitlyBlank=storedMaster?.source==='Blank master resume'&&storedMaster.name===''&&Array.isArray(storedMaster.roles)&&storedMaster.roles.length===0;
 let master=validMaster(storedMaster)?storedMaster:explicitlyBlank?createBlankMaster():clone(history.find(v=>validMaster(v.master))?.master||createBlankMaster());
 let masterDraft=null;
+let masterImportEpoch=0,masterImportController;
 function masterReady() {return validMaster(master)&&master.name.trim()&&master.summary.trim()&&master.competencies.length>0&&master.roles.every(r=>r.employer.trim()&&r.title.trim()&&r.dates.trim()&&r.bullets.length);}
 let historyDeletionFailed = false;
 let current = null, activeTab = 'resume', workspaceEpoch = 0;
@@ -217,12 +219,45 @@ function collectEditor(resume, prefix, full, form, validate=true) {
 }
 function blankRole(){return {employer:'',title:'',dates:'',bullets:[]};}
 function renderMasterDraft() {$('master-editor').innerHTML=buildEditor(masterDraft,'m-',true);}
+function showImportedText(){
+  const text=masterDraft?.importedText||'';
+  $('master-import-preview').hidden=!text;$('master-import-text').value=text;
+}
+function cancelMasterImport(){
+  masterImportEpoch++;masterImportController?.abort();masterImportController=undefined;
+  $('master-upload').value='';$('master-upload').disabled=false;$('master-save').disabled=false;
+  $('master-import').setAttribute('aria-busy','false');$('cancel-master-import').hidden=true;
+  $('restore-master').disabled=!masterReady()&&!masterDraft?.importedText;
+}
 function openMaster(event) {
+  cancelMasterImport();$('master-import-status').textContent='';clearError('master-import-error');
   masterDraft=clone(master);if(!masterDraft.roles.length)masterDraft.roles.push(blankRole());
   $('master-heading').textContent=masterReady()?'Edit your master resume':'Add your master resume';
-  $('restore-master').disabled=!masterReady();renderMasterDraft();clearError('master-error');
+  $('restore-master').disabled=!masterReady();renderMasterDraft();showImportedText();clearError('master-error');
   openDialog(document,'master-dialog',event.currentTarget);
 }
+$('master-upload').addEventListener('change',async()=>{
+  const file=$('master-upload').files?.[0];if(!file)return;
+  cancelMasterImport();clearError('master-import-error');clearError('master-error');
+  const epoch=masterImportEpoch,controller=new AbortController();masterImportController=controller;
+  $('master-upload').disabled=true;$('master-save').disabled=true;$('restore-master').disabled=false;
+  $('cancel-master-import').hidden=false;$('master-import').setAttribute('aria-busy','true');
+  $('master-import-status').textContent='Reading your resume in this browser…';
+  try{
+    const text=await extractResumeText(file,{signal:controller.signal});
+    if(epoch!==masterImportEpoch||controller.signal.aborted||!$('master-dialog').open)return;
+    masterDraft=parseResumeText(text);masterDraft.importedFileName=String(file.name).slice(0,250);
+    renderMasterDraft();showImportedText();
+    $('master-import-status').textContent='Resume imported into an editable draft. Review every field against the extracted text, complete missing details, then choose Save master resume.';
+    focusElement($('m-name'));
+  }catch(error){
+    if(epoch===masterImportEpoch&&!controller.signal.aborted){$('master-upload').disabled=false;$('master-import-status').textContent='Your saved master resume has not changed.';showError('master-import-error',fieldError(error.message||'The resume could not be imported. Try plain text or enter your details manually.','master-upload'));}
+  }finally{
+    if(epoch===masterImportEpoch){masterImportController=undefined;$('master-upload').disabled=false;$('master-save').disabled=false;$('cancel-master-import').hidden=true;$('master-import').setAttribute('aria-busy','false');$('restore-master').disabled=!masterReady()&&!masterDraft?.importedText;}
+  }
+});
+$('cancel-master-import').addEventListener('click',()=>{cancelMasterImport();$('master-import-status').textContent='Import canceled. Your saved master resume has not changed.';focusElement($('master-upload'));});
+$('master-dialog').addEventListener('close',()=>{cancelMasterImport();$('master-import-text').value='';$('master-import-preview').hidden=true;});
 $('master-editor').addEventListener('click',event=>{
   const button=event.target.closest('[data-master-action]');if(!button||button.disabled||!masterDraft)return;
   masterDraft=collectEditor(masterDraft,'m-',true,$('master-form'),false);
@@ -243,7 +278,8 @@ $('master-editor').addEventListener('click',event=>{
 for (const id of ['open-master','source-edit','edit-master-inline']) $(id).addEventListener('click', openMaster);
 $('master-form').addEventListener('submit', event => {
   event.preventDefault(); clearError('master-error');
-  try {master = collectEditor(masterDraft,'m-',true,event.currentTarget); master.source = 'Edited master resume'; const saved=storeValue(MASTER_KEY,master); closeDialog(document,'master-dialog'); refreshView(); toast(saved?'Master resume saved. Tailor again to use your updated experience.':'Master resume is ready in this tab. Browser storage is unavailable; download your documents before closing it.');}
+  if(masterImportController)return;
+  try {master = collectEditor(masterDraft,'m-',true,event.currentTarget); master.source = master.importedText?'Uploaded master resume':'Edited master resume'; const saved=storeValue(MASTER_KEY,master); closeDialog(document,'master-dialog'); refreshView(); toast(saved?'Master resume saved. Tailor again to use your updated experience.':'Master resume is ready in this tab. Browser storage is unavailable; download your documents before closing it.');}
   catch(error) {showError('master-error',error);}
 });
 $('restore-master').addEventListener('click', () => {
@@ -375,6 +411,7 @@ $('select-copy-text').addEventListener('click',()=>{
 if(storageUnavailable)showStorageNotice();
 
 function resetWorkspace({keepHistoryOpen=false}={}) {
+  cancelMasterImport();$('master-import-text').value='';$('master-import-preview').hidden=true;$('master-import-status').textContent='';clearError('master-import-error');
   workspaceEpoch++;current=null;activeTab='resume';masterDraft=null;
   for(const id of ['job-description','job-title','company','extra-keywords'])$(id).value='';
   $('length').value='balanced';$('export-document').value='resume';$('ats-platform').value='general';

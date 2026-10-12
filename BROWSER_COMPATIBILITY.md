@@ -41,3 +41,8 @@ No managed browser-control skill was available in this environment. Actual brows
 - https://developer.mozilla.org/en-US/docs/Web/API/VisualViewport
 - https://webkit.org/blog/7929/designing-websites-for-iphone-x/
 - https://webkit.org/blog/13966/webkit-features-in-safari-16-4/
+
+
+## Master resume upload — version 14
+
+Master resume accepts local DOCX, text-based PDF, or UTF-8 TXT files up to 10 MB (PDF: 30 pages). Review the extracted text and editable draft before Save. Clear master resume deletes the saved master and uploaded text and cancels pending imports; saved applications are cleared separately. Scanned PDFs require a text copy. PDF.js 5.6.205 and JSZip 3.10.1 load locally on demand. Automated tests cover import, save, removal, errors and stale results; real-device and screen-reader upload validation remains pending.

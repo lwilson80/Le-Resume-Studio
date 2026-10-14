@@ -239,9 +239,12 @@ $('master-upload').addEventListener('change',async()=>{
   $('master-upload').disabled=true;$('restore-master').disabled=false;$('master-import').setAttribute('aria-busy','true');
   $('master-import-status').textContent='Reading and saving your resume in this browser…';
   try{
+    const fileName=String(file.name).normalize('NFKC').trim().toLowerCase();
+    const priorNames=[...(Array.isArray(master.uploadedFileNames)?master.uploadedFileNames:[]),master.importedFileName].filter(n=>typeof n==='string');
+    if(priorNames.some(n=>n.normalize('NFKC').trim().toLowerCase()===fileName))throw new Error('This filename has already been used. Rename your file with a unique filename, then upload it again. Your existing master resume has not changed.');
     let formatting;const text=await extractResumeText(file,{signal:controller.signal,onFormatting:style=>{formatting=style;}});
     if(epoch!==masterImportEpoch||controller.signal.aborted||!$('master-dialog').open)return;
-    const uploaded=parseResumeText(text);uploaded.formatting=formatting;uploaded.importedFileName=String(file.name).slice(0,250);
+    const uploaded=parseResumeText(text);uploaded.formatting=formatting;uploaded.importedFileName=String(file.name).slice(0,250);uploaded.uploadedFileNames=[...new Set([...priorNames,uploaded.importedFileName])];
     if(!validMaster(uploaded)||!uploaded.name.trim()||!uploaded.summary.trim()||!uploaded.competencies.length||!uploaded.roles.every(r=>r.employer.trim()&&r.title.trim()&&r.dates.trim()&&r.bullets.length))throw new Error('The file needs a recognizable name, professional summary, skills, and job headings with role, company, years and accomplishments. Revise the source file and upload it again.');
     const saved=await storeValue(MASTER_KEY,uploaded);
     if(epoch!==masterImportEpoch||controller.signal.aborted||!$('master-dialog').open)return;

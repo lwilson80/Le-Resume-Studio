@@ -3,12 +3,12 @@
   "project_id": "appgprj_6ac7b2d96ac48191874b7dc329630b3b",
   "github_repository": "lwilson80/Le-Resume-Studio",
   "branch": "main",
-  "site_version_number": 20,
-  "site_version_id": "appgprj_6ac7b2d96ac48191874b7dc329630b3b~appgver_c85eac8909808191bd7515fb24a24bf1",
-  "site_source_commit": "49e708160381f78cfdf55482f36baf878fce135f",
-  "github_release_commit": "436f7ad58571f5e6da1fc20da6166950725132f3",
-  "app_dist_git_tree_sha": "0246e3e0c3b13ab3ca9ef7d80c80763311f71aa5",
-  "documentation_git_tree_sha": "5beb1ed9b0ff21b320021e822678b2286998397e",
+  "site_version_number": 21,
+  "site_version_id": "appgprj_6ac7b2d96ac48191874b7dc329630b3b~appgver_4cdbaa7098fc8191bba64f0743f62dc0",
+  "site_source_commit": "359c9247a733e2a4cf5fd5ab32ea388b9800575f",
+  "github_release_commit": "98ffb8197b4bbba66d921220d316a5a3330d1f09",
+  "app_dist_git_tree_sha": "fcfd386b3ccd453c92806f2b0bae338468a8991c",
+  "documentation_git_tree_sha": "d7899723f0cd3fef7eb0772c3d471eb17673d1d6",
   "documentation_files": [
     "docs/Le_Resume_Studio_Developer_Guide.docx",
     "docs/Le_Resume_Studio_Developer_Guide.pdf",
@@ -20,7 +20,7 @@
   "verification": {
     "app_and_documentation_files_verified": 54,
     "repository_files_verified": 84,
-    "tests_passed": 132,
+    "tests_passed": 133,
     "documentation_pages_visually_reviewed": 23,
     "fictional_resume_exports_visually_reviewed": 0
   },

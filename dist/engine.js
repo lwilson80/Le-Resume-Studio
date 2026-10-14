@@ -213,7 +213,7 @@ function scoreText(text, keywords) {
 }
 function createSummary(master, keywords) {
   const backed = keywords.filter(k => k.supported);
-  if (!backed.length) return master.summary;
+  if (!backed.length || !master.summary.trim()) return master.summary;
   const groupScores = ['Technology', 'Data', 'Business', 'Finance', 'Risk', 'Mortgage'].map(group => ({group, score: backed.filter(k => k.group === group).reduce((n, k) => n + Math.min(k.frequency, 4), 0)})).sort((a, b) => b.score - a.score);
   const introductions = {
     Technology: 'Business applications professional', Data: 'Business applications and data analysis professional',
@@ -287,7 +287,7 @@ export function createCoverLetter(result) {
   const roles = resume.roles.map((role,index)=>{
     const ranked = role.bullets.map((text,i)=>({text,index:i,score:scoreText(text,backed)})).sort((a,b)=>b.score-a.score||a.index-b.index);
     return {role,index,ranked,score:ranked.slice(0,2).reduce((n,b)=>n+b.score,0)+scoreText(role.title,backed)*2};
-  }).sort((a,b)=>b.score-a.score||a.index-b.index);
+  }).filter(r=>r.ranked.length).sort((a,b)=>b.score-a.score||a.index-b.index);
   const terms = backed.filter(k=>k.group!=='Certification').slice(0,3).map(termForProse);
   const opening = `I am applying for ${title ? 'the ' + title + ' position' : 'the opportunity described in your posting'}${company ? ' at ' + company : ''}. ${terms.length ? 'My background includes ' + proseList(terms) + '.' : 'I would welcome the opportunity to discuss how my experience could contribute to your team.'}`;
   const evidence = [];
@@ -295,8 +295,9 @@ export function createCoverLetter(result) {
   if (roles.length) {
     const primary = roles[0];
     const bullets = primary.ranked.slice(0,2).filter((b,i)=>i===0||b.score>0);
-    if (bullets.reduce((n,b)=>n+b.text.split(/\s+/).length,0)>115) bullets.pop();
-    paragraphs.push(`In my ${primary.role.title} role at ${primary.role.employer}, ${firstPerson(bullets[0].text)}.${bullets[1] ? ' ' + firstPerson(bullets[1].text) + '.' : ''}`);
+    if (bullets.length>1&&bullets.reduce((n,b)=>n+b.text.split(/\s+/).length,0)>115) bullets.pop();
+    const context=primary.role.title&&primary.role.employer?`In my ${primary.role.title} role at ${primary.role.employer}, `:primary.role.employer?`At ${primary.role.employer}, `:primary.role.title?`In my ${primary.role.title} role, `:'';
+    paragraphs.push(`${context}${firstPerson(bullets[0].text)}.${bullets[1] ? ' ' + firstPerson(bullets[1].text) + '.' : ''}`);
     evidence.push(...bullets.map(b=>({employer:primary.role.employer,title:primary.role.title,text:b.text})));
     const generalTerms=new Set(['Reporting','Internal Controls','Compliance','Technical Documentation','Training','Stakeholder Management']);
     const secondary = roles.slice(1).find(r=>{
@@ -360,7 +361,7 @@ export function coverLetterText(letter,resume) {
 export function tailorResume(master, jd, {title = '', company = '', length = 'balanced', extra = '', ats = 'general'} = {}) {
   if (jd.trim().length < 80 || jd.trim().split(/\s+/).length < 12) throw new Error('Paste a fuller job description (at least 80 characters and 12 words) so the app has enough detail to tailor your resume.');
   if (jd.length > 40000) throw new Error('Please keep the job description under 40,000 characters.');
-  if (!master.name.trim() || !master.roles.length) throw new Error('Your master resume needs a name and at least one role.');
+  if (!masterText(master).trim()) throw new Error('Upload readable resume text before tailoring.');
   const keywords = extractKeywords(jd, master, extra);
   const backed = keywords.filter(k => k.supported);
   const changes = [];

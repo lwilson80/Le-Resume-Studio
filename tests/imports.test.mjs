@@ -21,7 +21,7 @@ test('File validation rejects unsupported, empty, oversized and disguised files 
   for(const [input,message] of [[{name:'a.doc',size:80},/docx/],[{name:'a.txt',size:0},/nonempty/],[{name:'a.pdf',size:11*1024*1024},/10 MB/]])assert.throws(()=>validateResumeFile(input),message);
   await assert.rejects(extractResumeText(file('this is not a PDF'.repeat(3),'resume.pdf')),/valid PDF/);
   await assert.rejects(extractResumeText(file('this is not Word'.repeat(3),'resume.docx')),/valid Word/);
-  await assert.rejects(extractResumeText(file('too short')),/usable resume text/);
+  await assert.rejects(extractResumeText(file('   ')),/usable resume text/);
 });
 test('Word extraction decodes text and preserves paragraphs without rendering markup',()=>{
   assert.equal(wordXmlText('<w:document><w:p><w:r><w:t>Avery &amp; Taylor</w:t></w:r></w:p><w:p><w:r><w:t>&lt;script&gt;</w:t></w:r></w:p></w:document>'),'Avery & Taylor\n<script>');
@@ -110,10 +110,24 @@ test('Uploads reject used filenames including capitalization changes and retain 
 test('Failed uploads do not reserve a filename and Clear Master Resume clears filename history',async()=>{
   const ui=await setup({},false,{fresh:true});await ui.get('open-master').dispatch('click');const input=ui.get('master-upload');
   const select=async text=>{input.files=[file(text,'resume.txt')];await input.dispatch('change');};
-  await select('unreadable');await select(plain);assert.equal(JSON.parse(ui.values.get(key)).importedFileName,'resume.txt');
+  await select('   ');await select(plain);assert.equal(JSON.parse(ui.values.get(key)).importedFileName,'resume.txt');
   await ui.get('restore-master').dispatch('click');await select(plain);assert.equal(ui.get('master-import-error').hidden,true);
 });
 test('Filename history survives reopening this browser workspace',async()=>{
   const ui=await setup({},false,{fresh:true});await ui.get('open-master').dispatch('click');ui.get('master-upload').files=[file(plain,'resume.txt')];await ui.get('master-upload').dispatch('change');
   const again=await setup(Object.fromEntries(ui.values),false,{fresh:true});await again.get('open-master').dispatch('click');again.get('master-upload').files=[file(plain,'resume.txt')];await again.get('master-upload').dispatch('change');assert.match(again.get('master-import-error').textContent,/unique filename/);
 });
+
+ test('Uploads accept short and unstructured resumes without required sections and support both exports',async()=>{
+  for(const text of ['SQL','SKILLS\nSQL, Reporting','EDUCATION\nExample University','EXPERIENCE\nAnalyst\nExample Company\n2020 to 2022','I analyze reports and document requirements.','EXPERIENCE\nAnalyst\nExample Company\n2020 to 2022\n• '+('Analyzed reports and documented requirements. '.repeat(25))]){
+    const ui=await setup({},false,{fresh:true});await ui.get('open-master').dispatch('click');ui.get('master-upload').files=[file(text)];await ui.get('master-upload').dispatch('change');
+    assert.equal(ui.get('master-import-error').hidden,true,text);assert.equal(ui.get('tailor-button').disabled,false);assert.equal(ui.get('restore-master').disabled,false);assert.equal(ui.get('master-import-text').value,text.trim());
+    const master=JSON.parse(ui.values.get(key));const result=tailorResume(master,'Our analyst will analyze reports, document requirements and support business stakeholders through clear reporting and collaboration.');
+    assert.equal(result.coverLetter.paragraphs.some(p=>p.includes('undefined')),false);
+    const {createDownloadPayload}=await import('../dist/downloads.js');for(const kind of ['resume','cover'])assert.ok(createDownloadPayload(result,kind,'txt'));
+    assert.ok((await createDocx(result.resume)).size>0);
+    const fonts=await Promise.all(['NimbusSans-Regular','NimbusSans-Bold'].map(n=>fs.readFile(new URL('../dist/vendor/'+n+'.cff',import.meta.url))));assert.ok((await createPdf(result.resume,globalThis.PDFLib,fonts)).length>0);
+    const reopened=await setup(Object.fromEntries(ui.values),false,{fresh:true});assert.equal(reopened.get('tailor-button').disabled,false);
+    await reopened.get('open-master').dispatch('click');await reopened.get('restore-master').dispatch('click');assert.equal(reopened.get('tailor-button').disabled,true);
+  }
+ });

@@ -79,7 +79,7 @@ export async function extractResumeText(file,{signal,loadZip=zipLoader,loadPDF=p
   }
   stopped(signal);text=text.replace(/\r\n?/g,'\n').replace(/\u0000/g,'').trim();
   if(text.length>IMPORT_LIMITS.characters)throw new Error('The extracted resume is too long. Upload a shorter document.');
-  if(text.replace(/\s/g,'').length<30)throw new Error('No usable resume text was found. Scanned or image-only PDFs need a text-based PDF, Word, or plain-text copy.');
+  if(!text.trim())throw new Error('No usable resume text was found. Scanned or image-only PDFs need a text-based PDF, Word, or plain-text copy.');
   return text;
 }
 
@@ -135,7 +135,10 @@ export function parseResumeText(text){
     // This includes short final bullets, unusual verbs, and accomplishments mentioning years.
     role.bullets.push(clean(line));
   }
-  if(!resume.roles.length)resume.roles.push({employer:'',title:'',dates:'',bullets:jobPending.map(clean)});
+  if(!resume.roles.length&&jobPending.length)resume.roles.push({employer:'',title:'',dates:'',bullets:jobPending.map(clean)});
+  // Preserve unlabeled source text without demanding named resume sections.
+  if(!resume.summary)resume.summary=intro.filter(line=>line!==resume.name&&!line.includes(resume.email||'\u0000')&&!line.includes(resume.phone||'\u0000')&&!/linkedin\.com/i.test(line)).map(clean).join(' ');
+  if(!resume.summary&&!resume.roles.length&&!resume.competencies.length&&!resume.skills.length&&!sections.education.length)resume.summary=text.trim();
   // Common labeled or line-separated education; missing dates remain blank.
   let education=null,pending=[];
   const qualification=/\b(?:bachelor|master|doctor|associate|degree|diploma|certificate|certification|BSc|BS|BA|MBA|PhD)\b/i;
@@ -148,7 +151,6 @@ export function parseResumeText(text){
   }
   if(pending.length)resume.education.push({school:pending.find(p=>!qualification.test(p))||'',qualification:pending.find(p=>qualification.test(p))||'',dates:''});
   resume.source='Uploaded master resume';resume.importedText=text;
-  if(resume.roles.length>30||resume.education.length>20)throw new Error('This resume has too many entries. Upload a shorter version.');
   return resume;
 }
 

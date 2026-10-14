@@ -38,10 +38,10 @@ test('New visitors upload complete work history without manual master editing co
   const returning=await setup(Object.fromEntries(ui.values),false,{fresh:true});await returning.get('open-master').dispatch('click');assert.ok(returning.get('master-import-text').value.includes(own.name));
   const separate=await setup({},false,{fresh:true});await separate.get('open-master').dispatch('click');assert.equal(separate.get('master-import-text').value,'');assert.equal(separate.get('history-count').textContent,'0');
 });
-test('Incomplete uploads fail accessibly without replacing an existing saved master',async()=>{
+test('Uploads without summary or skills replace the master without a content requirement',async()=>{
   const ui=await setup({[key]:JSON.stringify(own)},false,{fresh:true});await ui.get('open-master').dispatch('click');
   ui.get('master-upload').files=[Object.assign(new Blob(['Avery Taylor\nEXPERIENCE\nExample Company\nAnalyst\n2022 to Present\n• Reviewed reports.']),{name:'incomplete.txt'})];
-  await ui.get('master-upload').dispatch('change');assert.equal(ui.get('master-import-error').hidden,false);assert.equal(ui.doc.activeElement,ui.get('master-upload'));assert.deepEqual(JSON.parse(ui.values.get(key)),own);
+  await ui.get('master-upload').dispatch('change');assert.equal(ui.get('master-import-error').hidden,true);const saved=JSON.parse(ui.values.get(key));assert.equal(saved.summary,'');assert.deepEqual(saved.competencies,[]);assert.equal(saved.roles[0].title,'Analyst');assert.equal(ui.get('tailor-button').disabled,false);
 });
 
 test('Missing master can recover only this browser’s own history and survives clearing that history',async()=>{

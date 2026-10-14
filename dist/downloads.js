@@ -13,7 +13,7 @@ const MAX_TRANSFER = 600000;
 const text = value => typeof value === 'string' && value.length <= 20000;
 const texts = values => Array.isArray(values) && values.length <= 200 && values.every(text);
 const rows = (values, check) => Array.isArray(values) && values.length <= 100 && values.every(check);
-const contact = r => r && text(r.name) && r.name.trim() && ['phone','email','linkedin'].every(k => text(r[k]));
+const contact = r => r && text(r.name) && ['phone','email','linkedin'].every(k => text(r[k]));
 
 export function validateDownloadPayload(p) {
   if (!p || p.version !== 1 || !hasOwn(FILE_TYPES,p.format) || !['resume','cover'].includes(p.kind) || !text(p.name) || p.name.length > 180 || !/^[a-zA-Z0-9_ -]+\.(docx|pdf|txt)$/.test(p.name) || !p.name.endsWith('.'+p.format) || !contact(p.resume)) throw new Error('This download link is incomplete. Choose a format again in Le Resume Studio.');

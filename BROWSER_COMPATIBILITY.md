@@ -45,7 +45,7 @@ No managed browser-control skill was available in this environment. Actual brows
 
 ## Master resume upload — version 14
 
-Master resume permits file upload only: DOCX, text-based PDF, UTF-8 TXT or RTF up to 10 MB (PDF: 30 pages). A complete upload saves automatically. Extracted text is read-only; correct the original file and upload again. Clear Master Resume removes the stored source, extracted text, file selection and current output, cancels pending imports, and stays blank after reopening. Saved versions are cleared separately. Errors preserve the previous source. Real-device and screen-reader upload checks remain pending.
+Master resume permits file upload only: DOCX, text-based PDF, UTF-8 TXT or RTF up to 10 MB (PDF: 30 pages). Any readable upload saves automatically, without required sections or applicant fields. Extracted text is read-only; correct the original file and upload again. Clear Master Resume removes the stored source, extracted text, file selection and current output, cancels pending imports, and stays blank after reopening. Saved versions are cleared separately. Errors preserve the previous source. Real-device and screen-reader upload checks remain pending.
 
 
 ## Formatting and privacy — version 15
@@ -56,8 +56,12 @@ Imports retain each final accomplishment within its job and preserve uploaded ro
 
 Word and PDF uploads retain detected typography, supported section order and role/company/year headings. PDF uses compatible embedded font families. Complex tables, graphics, columns and exact original pagination are not reproduced. TXT and RTF use a single-column Arial 11-point template with 0.75-inch margins, consistent headings and action bullets. See [MIT resume checklist](https://capd.mit.edu/resources/resume-checklist/). The release passed 124 automated tests; real browser and ATS certification are not claimed.
 
-## Unique upload filenames — version 18
+## Unique upload filenames — version 19
 
 Each successful master resume upload requires a unique filename within this browser master workspace. Comparisons normalize Unicode, trim surrounding whitespace and ignore capitalization. A duplicate is rejected before extraction and leaves the existing master intact. Rename revised files before uploading. Failed or canceled imports do not reserve names. Clear Master Resume deletes the master and its filename history, allowing a fresh upload. The history stays alongside the master in existing browser storage or the encrypted vault; no filename data is shared across users. Applicant names do not need to change.
 
-The release passes 127 automated checks, including duplicate rejection, renamed replacements, failed retry, reopening and clearing filename history. Native Safari/mobile picker interactions remain unverified.
+The release passes 128 automated checks, including duplicate rejection, renamed replacements, failed retry, reopening and clearing filename history. Native Safari/mobile picker interactions remain unverified.
+
+## Flexible master resume imports
+
+Uploads need no name, professional summary, skills, specific section headings, complete job details or education fields. Short readable text is accepted. Unlabeled text is retained as summary content when structure is absent. Tailoring and downloads allow empty fields; cover letters omit role evidence when no accomplishments are available. Review extraction and output because missing facts cannot be inferred reliably. Supported file formats, readable-text and resource protections and unique filenames remain in effect.

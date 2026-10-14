@@ -23,7 +23,7 @@ function readStored(key, fallback) {
   let saved;try{saved=localStorage.getItem(key);}catch{storageUnavailable=true;return fallback;}
   try{const value=JSON.parse(saved);return value??fallback;}catch{return fallback;}
 }
-function validMaster(m) {return m && typeof m.name === 'string' && typeof m.summary === 'string' && Array.isArray(m.roles) && m.roles.length && m.roles.every(r => r && typeof r.title === 'string' && typeof r.employer === 'string' && typeof r.dates === 'string' && Array.isArray(r.bullets) && r.bullets.every(b => typeof b === 'string')) && Array.isArray(m.skills) && m.skills.every(s => s && typeof s.group === 'string' && Array.isArray(s.items) && s.items.every(i => typeof i === 'string')) && Array.isArray(m.competencies) && m.competencies.every(c => typeof c === 'string') && Array.isArray(m.education) && m.education.every(e => e && typeof e.school === 'string' && typeof e.qualification === 'string' && typeof e.dates === 'string');}
+function validMaster(m) {return m && typeof m.name === 'string' && typeof m.summary === 'string' && Array.isArray(m.roles) && m.roles.every(r => r && typeof r.title === 'string' && typeof r.employer === 'string' && typeof r.dates === 'string' && Array.isArray(r.bullets) && r.bullets.every(b => typeof b === 'string')) && Array.isArray(m.skills) && m.skills.every(s => s && typeof s.group === 'string' && Array.isArray(s.items) && s.items.every(i => typeof i === 'string')) && Array.isArray(m.competencies) && m.competencies.every(c => typeof c === 'string') && Array.isArray(m.education) && m.education.every(e => e && typeof e.school === 'string' && typeof e.qualification === 'string' && typeof e.dates === 'string');}
 const storedMaster=readStored(MASTER_KEY,null);
 let history = readStored(HISTORY_KEY, []);
 if (!Array.isArray(history)) history = [];
@@ -32,7 +32,7 @@ history = history.filter(v => v && validMaster(v.resume) && validMaster(v.master
 const explicitlyBlank=storedMaster?.source==='Blank master resume'&&storedMaster.name===''&&Array.isArray(storedMaster.roles)&&storedMaster.roles.length===0;
 let master=validMaster(storedMaster)?storedMaster:explicitlyBlank?createBlankMaster():clone(history.find(v=>validMaster(v.master))?.master||createBlankMaster());
 let masterImportEpoch=0,masterImportController;
-function masterReady() {return validMaster(master)&&master.name.trim()&&master.summary.trim()&&master.competencies.length>0&&master.roles.every(r=>r.employer.trim()&&r.title.trim()&&r.dates.trim()&&r.bullets.length);}
+function masterReady() {return validMaster(master)&&!!(master.importedText?.trim()||master.name.trim()||master.summary.trim()||master.roles.length||master.competencies.length);}
 let historyDeletionFailed = false;
 let current = null, activeTab = 'resume', workspaceEpoch = 0;
 const pendingExportMarkup = new Map();
@@ -53,7 +53,7 @@ function clearError(id) {clearFieldError(document,id);}
 initializeDialogs(document);
 trackViewport();
 // Preserve a recovered browser-owned source independently of saved applications.
-if(!validMaster(storedMaster)&&!explicitlyBlank&&validMaster(master))storeValue(MASTER_KEY,master);
+if(!validMaster(storedMaster)&&!explicitlyBlank&&masterReady())storeValue(MASTER_KEY,master);
 $('ats-platform').innerHTML=ATS_PLATFORMS.map(p=>`<option value="${escape(p.id)}">${escape(p.name)}</option>`).join('');
 function dateLabel(value) {return new Date(value).toLocaleString(undefined, {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});}
 function saveVersion(result) {
@@ -217,12 +217,12 @@ function collectEditor(resume,prefix,form){
 }
 function showImportedText(){
   const text=master.importedText||resumeText(master);
-  $('master-import-preview').hidden=!master.name;$('master-import-text').value=master.name?text:'';
+  $('master-import-preview').hidden=!masterReady();$('master-import-text').value=masterReady()?text:'';
 }
 function cancelMasterImport(){
   masterImportEpoch++;masterImportController?.abort();masterImportController=undefined;
   $('master-upload').value='';$('master-upload').disabled=false;
-  $('master-import').setAttribute('aria-busy','false');$('restore-master').disabled=!master.name;
+  $('master-import').setAttribute('aria-busy','false');$('restore-master').disabled=!masterReady();
 }
 function openMaster(event){
   if(privateVault.exists()&&!privateUnlocked){openPrivacy();return;}
@@ -245,7 +245,7 @@ $('master-upload').addEventListener('change',async()=>{
     let formatting;const text=await extractResumeText(file,{signal:controller.signal,onFormatting:style=>{formatting=style;}});
     if(epoch!==masterImportEpoch||controller.signal.aborted||!$('master-dialog').open)return;
     const uploaded=parseResumeText(text);uploaded.formatting=formatting;uploaded.importedFileName=String(file.name).slice(0,250);uploaded.uploadedFileNames=[...new Set([...priorNames,uploaded.importedFileName])];
-    if(!validMaster(uploaded)||!uploaded.name.trim()||!uploaded.summary.trim()||!uploaded.competencies.length||!uploaded.roles.every(r=>r.employer.trim()&&r.title.trim()&&r.dates.trim()&&r.bullets.length))throw new Error('The file needs a recognizable name, professional summary, skills, and job headings with role, company, years and accomplishments. Revise the source file and upload it again.');
+    if(!validMaster(uploaded))throw new Error('The file could not be processed. Try another supported file.');
     const saved=await storeValue(MASTER_KEY,uploaded);
     if(epoch!==masterImportEpoch||controller.signal.aborted||!$('master-dialog').open)return;
     master=uploaded;refreshView();showImportedText();
@@ -254,7 +254,7 @@ $('master-upload').addEventListener('change',async()=>{
   }catch(error){
     if(epoch===masterImportEpoch&&!controller.signal.aborted){$('master-upload').disabled=false;$('master-import-status').textContent='Your saved master resume has not changed.';showError('master-import-error',fieldError(error.message||'The resume could not be uploaded. Try a text-based file.','master-upload'));}
   }finally{
-    if(epoch===masterImportEpoch){masterImportController=undefined;$('master-upload').value='';$('master-upload').disabled=false;$('master-import').setAttribute('aria-busy','false');$('restore-master').disabled=!master.name;}
+    if(epoch===masterImportEpoch){masterImportController=undefined;$('master-upload').value='';$('master-upload').disabled=false;$('master-import').setAttribute('aria-busy','false');$('restore-master').disabled=!masterReady();}
   }
 });
 $('master-dialog').addEventListener('close',()=>{cancelMasterImport();$('master-import-text').value='';$('master-import-preview').hidden=true;});

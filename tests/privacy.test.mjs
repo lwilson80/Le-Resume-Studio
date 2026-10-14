@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import {createBlankMaster} from '../dist/resume.js';
 import {PrivateVault,VAULT_KEY} from '../dist/privacy.js';
 import {setup} from './dom-adapter.mjs';
 const pass='Fictional private passphrase 42';
@@ -39,6 +40,6 @@ test('Deleting protected saved applications and master removes their contents fr
   const ui=await setup({},false,{fresh:true,storage:s});await ui.get('open-privacy').dispatch('click');ui.get('privacy-password').value=pass;await ui.get('privacy-form').dispatch('submit');
   await ui.get('open-history').dispatch('click');await ui.get('clear-history').dispatch('click');
   let snapshot=await v.unlock(pass);assert.deepEqual(snapshot.history,[]);assert.equal(snapshot.master.name,'Avery Taylor');
-  await ui.get('open-master').dispatch('click');await ui.get('restore-master').dispatch('click');snapshot=await v.unlock(pass);assert.equal(snapshot.master.name,'');assert.deepEqual(snapshot.master.roles,[]);
+  await ui.get('open-master').dispatch('click');await ui.get('restore-master').dispatch('click');snapshot=await v.unlock(pass);assert.deepEqual(snapshot.master,createBlankMaster());assert.equal(ui.get('master-review').innerHTML,'');assert.equal(ui.get('master-import-text').value,'');assert.equal(ui.get('master-source-name').textContent,'');
   assert.equal(s.getItem('lw-resume-studio-master-v1'),null);assert.equal(s.getItem('lw-resume-studio-history-v1'),null);
 });

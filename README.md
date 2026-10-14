@@ -2,7 +2,7 @@
 
 An access-controlled, buildless Sites application. New visitors start with a blank master. Upload a readable resume file to save it automatically; the master has no manual editing fields. Clear Master Resume removes its prior information and current workspace. No applicant resume is bundled with the published app. Tailoring remains disabled until readable source text is available.
 
-Existing browser-saved masters are preserved. When the master key is missing or corrupt, the app can recover a valid source snapshot from that same browser's saved applications and stores it independently. Clear Master Resume writes an explicit blank marker so history cannot silently repopulate an intentionally cleared master. Sharing the Site link transfers neither the master nor saved history; users sharing one browser profile can access unprotected local data. Enable Privacy and password before leaving saved data on a shared device. A protected workspace starts locked on a new load.
+Existing browser-saved masters are preserved. When the master key is missing or corrupt, the app can recover a valid source snapshot from that same browser's saved applications and stores it independently. Clear Master Resume removes the saved master record and keeps only a content-free deletion flag so history cannot silently repopulate an intentionally cleared master. Sharing the Site link transfers neither the master nor saved history; users sharing one browser profile can access unprotected local data. Enable Privacy and password before leaving saved data on a shared device. A protected workspace starts locked on a new load.
 
 The app runs locally in the visitor's browser. It uses a catalog of common job terms, detects named tools and explicitly stated skills, checks source evidence, prioritizes relevant bullets, and substitutes equivalent resume terminology. It does not use an AI API or fabricate missing qualifications. Keyword coverage is a diagnostic text overlap measure, not an ATS score.
 
@@ -75,7 +75,7 @@ The release passes 132 automated checks, including duplicate rejection, renamed 
 
 Uploads need no name, professional summary, skills, specific section headings, complete job details or education fields. Short readable text is accepted. Unlabeled text is retained as summary content when structure is absent. Tailoring and downloads allow empty fields; cover letters omit role evidence when no accomplishments are available. Review extraction and output because missing facts cannot be inferred reliably. Supported file formats, readable-text and resource protections and unique filenames remain in effect.
 
-Clear Master Resume empties the uploaded resume text, job description, extra keywords and copy-text boxes immediately after confirmation, before awaiting the browser storage write. Saved application versions remain separate.
+Clear Master Resume empties the uploaded resume text, job description, extra keywords and copy-text boxes immediately on click, before awaiting the browser storage write. Saved application versions remain separate.
 
 
 ## Master resume review and deletion — version 20
@@ -83,3 +83,10 @@ Clear Master Resume empties the uploaded resume text, job description, extra key
 The master dialog restores version 1 section grouping: contact details, professional summary, core competencies, expandable experience, technical skills and education. Upload remains the only way to change source content; displayed details and the original-text disclosure are read-only. Missing fields do not block upload.
 
 Clear Master Resume immediately empties all source sections, original text, file selection, filename history and current workspace. The dialog stays open with an empty state. A blank marker replaces saved master data and prevents recovery from older application snapshots; protected storage writes the same blank master into the encrypted vault. Storage failures keep a clear retry available and report that persistence could not be confirmed. Master-clear storage events invalidate stale copies in other tabs. Saved application versions remain separately managed. The release passes 132 automated checks; native browser and assistive-technology review remains pending.
+
+
+## Complete master removal and role sections — version 21
+
+Clear Master Resume acts directly on the button click, without a native confirmation popup that an embedded browser may suppress. deleteStoredMaster removes the unprotected master key and retains only the boolean lw-resume-studio-master-cleared-v1 flag, so older saved applications cannot silently restore it. Protected storage receives a blank master snapshot. All master subsections, imported text, source filename, formatting and filename history are removed from the master; the file picker and current workspace clear. Failures remain retryable. The app reads source bytes transiently and cannot delete the original file on the user’s device. Saved application versions remain separate.
+
+Every detected role renders as its own expanded semantic section under Experience, with a uniquely labeled heading, role, company, years and its own accomplishment bullets. Roles at the same company stay separate. The release passes 133 automated checks; native browser and assistive-technology testing remains pending.

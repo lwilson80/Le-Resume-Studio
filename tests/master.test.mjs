@@ -55,8 +55,7 @@ test('Missing master can recover only this browser’s own history and survives 
 
 test('Intentional master clearing remains blank after reopening even when saved versions exist',async()=>{
   const version=tailorResume(own,jd);let ui=await setup({[key]:JSON.stringify(own),[historyKey]:JSON.stringify([version])},false,{fresh:true});
-  await ui.get('open-master').dispatch('click');globalThis.confirm=()=>false;await ui.get('restore-master').dispatch('click');assert.equal(JSON.parse(ui.values.get(key)).name,own.name);
-  globalThis.confirm=()=>true;await ui.get('restore-master').dispatch('click');assert.deepEqual(JSON.parse(ui.values.get(key)),createBlankMaster());assert.equal(ui.get('master-import-text').value,'');assert.equal(ui.get('master-upload').value,'');assert.equal(ui.get('master-import-preview').hidden,true);assert.equal(ui.get('resume-document').innerHTML,'');assert.equal(ui.get('history-count').textContent,'1');assert.equal(ui.get('tailor-button').disabled,true);
+  await ui.get('open-master').dispatch('click');globalThis.confirm=()=>{throw new Error('Native confirmation must not be used');};await ui.get('restore-master').dispatch('click');assert.equal(ui.values.has(key),false);assert.equal(ui.get('master-import-text').value,'');assert.equal(ui.get('master-upload').value,'');assert.equal(ui.get('master-import-preview').hidden,true);assert.equal(ui.get('resume-document').innerHTML,'');assert.equal(ui.get('history-count').textContent,'1');assert.equal(ui.get('tailor-button').disabled,true);
   ui=await setup(Object.fromEntries(ui.values),false,{fresh:true});await ui.get('open-master').dispatch('click');assert.equal(ui.get('master-import-text').value,'');assert.equal(ui.get('history-count').textContent,'1');
 });
 

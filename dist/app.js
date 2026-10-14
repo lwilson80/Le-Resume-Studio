@@ -12,6 +12,7 @@ import {extractResumeText,parseResumeText} from './imports.js';
 const $ = id => document.getElementById(id);
 const escape = str => String(str ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const clone = cloneData;
+const MASTER_CLEARED_KEY='lw-resume-studio-master-cleared-v1';
 const MASTER_KEY = 'lw-resume-studio-master-v1', HISTORY_KEY = 'lw-resume-studio-history-v1';
 // Retire the previous draft cache without touching the master or saved versions.
 try {localStorage.removeItem('lw-resume-studio-draft-v1');} catch {}
@@ -29,7 +30,7 @@ let history = readStored(HISTORY_KEY, []);
 if (!Array.isArray(history)) history = [];
 history = history.filter(v => v && validMaster(v.resume) && validMaster(v.master) && Array.isArray(v.keywords)).slice(0, 10);
 // Recover only this browser's own saved source; never bundle a personal default.
-const explicitlyBlank=storedMaster?.source==='Blank master resume'&&storedMaster.name===''&&Array.isArray(storedMaster.roles)&&storedMaster.roles.length===0;
+const explicitlyBlank=readStored(MASTER_CLEARED_KEY,false)===true||(storedMaster?.source==='Blank master resume'&&storedMaster.name===''&&Array.isArray(storedMaster.roles)&&storedMaster.roles.length===0);
 let master=validMaster(storedMaster)?storedMaster:explicitlyBlank?createBlankMaster():clone(history.find(v=>validMaster(v.master))?.master||createBlankMaster());
 let masterImportEpoch=0,masterImportController,masterDeletionFailed=false;
 function masterReady() {return validMaster(master)&&!!(master.importedText?.trim()||master.name.trim()||master.summary.trim()||master.roles.length||master.competencies.length);}
@@ -47,6 +48,16 @@ function storeValue(key,value) {
     return privateVault.write({master:key===MASTER_KEY?value:master,history:key===HISTORY_KEY?value:history}).then(()=>true).catch(()=>{showStorageNotice();toast('Protected data could not be saved. Download a copy before closing this tab.');return false;});
   }
   try{localStorage.setItem(key,JSON.stringify(value));return true;}catch{showStorageNotice();toast('Browser storage is unavailable. This version works until the tab closes; download a copy to keep it.');return false;}
+}
+async function deleteStoredMaster(){
+  if(privateVault.exists())return await storeValue(MASTER_KEY,createBlankMaster());
+  try{
+    // Keep only a content-free deletion flag so saved applications cannot restore the source.
+    localStorage.setItem(MASTER_CLEARED_KEY,'true');
+    localStorage.removeItem(MASTER_KEY);
+    if(localStorage.getItem(MASTER_KEY)!==null)throw new Error('Master deletion was not persisted');
+    return true;
+  }catch{showStorageNotice();return false;}
 }
 function showError(id, error) {showFieldError(document,id,error);}
 function clearError(id) {clearFieldError(document,id);}
@@ -225,7 +236,7 @@ function showImportedText(){
   const field=(label,value)=>`<div class="master-fact"><dt>${escape(label)}</dt><dd>${escape(value||'Not provided')}</dd></div>`;
   const list=items=>items.length?`<ul>${items.map(v=>`<li>${escape(v)}</li>`).join('')}</ul>`:'<p class="master-missing">Not provided in the uploaded file.</p>';
   const section=(title,body)=>`<section class="editor-section"><h3>${title}</h3>${body}</section>`;
-  const roles=master.roles.map((r,i)=>`<details class="role-editor" ${i===0?'open':''}><summary>${escape([r.title,r.employer,r.dates].filter(Boolean).join(' · ')||'Uploaded role')}</summary><div><dl class="master-facts">${field('Role',r.title)}${field('Company',r.employer)}${field('Years worked',r.dates)}</dl>${list(r.bullets)}</div></details>`).join('');
+  const roles=master.roles.map((r,i)=>`<section class="master-role" aria-labelledby="master-role-heading-${i}"><h4 id="master-role-heading-${i}">${escape(r.title||'Role '+(i+1))}</h4><dl class="master-facts">${field('Role',r.title)}${field('Company',r.employer)}${field('Years worked',r.dates)}</dl>${list(r.bullets)}</section>`).join('');
   $('master-review').innerHTML=section('Contact details',`<dl class="master-facts">${field('Full name',master.name)}${field('Email',master.email)}${field('Phone',master.phone)}${field('LinkedIn',master.linkedin)}</dl>`)
     +section('Professional summary',`<p class="master-summary">${escape(master.summary||'Not provided in the uploaded file.')}</p>`)
     +section('Core competencies',list(master.competencies))
@@ -274,12 +285,11 @@ $('master-upload').addEventListener('change',async()=>{
 $('master-dialog').addEventListener('close',()=>{cancelMasterImport();$('master-import-text').value='';$('master-import-preview').hidden=true;$('master-review').innerHTML='';$('master-source-name').textContent='';});
 for(const id of ['open-master','source-edit','edit-master-inline'])$(id).addEventListener('click',openMaster);
 $('restore-master').addEventListener('click', async () => {
-  if(!confirm('Clear this browser’s master resume and remove its prior information from the current workspace? Saved application versions remain available.'))return;
   cancelMasterImport();
   master=createBlankMaster();resetWorkspace({keepMasterOpen:true});showImportedText();
   $('restore-master').disabled=true;$('master-import-status').textContent='Removing your saved master resume…';
-  const cleared=await storeValue(MASTER_KEY,master);masterDeletionFailed=!cleared;
-  const message=cleared?'Your saved master resume, uploaded text and filename history have been removed. Saved application versions remain available.':'The master is blank in this tab, but removal from browser storage could not be confirmed. Try Clear Master Resume again or clear this app’s data in your browser settings.';
+  const cleared=await deleteStoredMaster();masterDeletionFailed=!cleared;
+  const message=cleared?'All master resume sections, the imported file data, extracted text and filename history have been deleted. Saved application versions remain available.':'The master is blank in this tab, but removal from browser storage could not be confirmed. Try Clear Master Resume again or clear this app’s data in your browser settings.';
   $('restore-master').disabled=cleared;$('master-import-status').textContent=message;focusElement($('master-heading'));toast(message);
 });
 

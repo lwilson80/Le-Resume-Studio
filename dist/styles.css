@@ -36,3 +36,6 @@ dialog{border:1px solid #dbe3d2;border-radius:15px;background:#fff;color:var(--i
 @media(max-width:640px){.master-facts{grid-template-columns:minmax(0,1fr)}}
 
 .master-review .role-editor summary{overflow-wrap:anywhere;line-height:1.6}
+
+.master-role{border:1px solid var(--line);border-radius:9px;padding:18px;margin:16px 0;background:#fff}.master-role h4{font-size:1.0625rem;margin:0 0 14px;line-height:1.6;overflow-wrap:anywhere}
+@media(max-width:640px){.master-role{padding:14px}}

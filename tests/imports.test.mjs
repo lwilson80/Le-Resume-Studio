@@ -131,3 +131,37 @@ test('Filename history survives reopening this browser workspace',async()=>{
     await reopened.get('open-master').dispatch('click');await reopened.get('restore-master').dispatch('click');assert.equal(reopened.get('tailor-button').disabled,true);
   }
  });
+
+test('Clear Master Resume empties all visible text boxes immediately before storage completion',async()=>{
+  const ui=await setup({},false,{fresh:true});await ui.get('open-master').dispatch('click');ui.get('master-upload').files=[file(plain)];await ui.get('master-upload').dispatch('change');
+  ui.get('job-description').value='Fictional job description';ui.get('extra-keywords').value='Reporting';ui.get('copy-text').value='Fictional copied text';
+  const clearing=ui.get('restore-master').dispatch('click');
+  for(const id of ['master-import-text','job-description','extra-keywords','copy-text'])assert.equal(ui.get(id).value,'',id);
+  assert.equal(ui.get('master-import-preview').hidden,true);assert.equal(ui.get('tailor-button').disabled,true);
+  await clearing;assert.deepEqual(JSON.parse(ui.values.get(key)),createBlankMaster());
+});
+
+test('Master review uses the original section layout and clearing removes every displayed and saved source field',async()=>{
+  const ui=await setup({},false,{fresh:true});await ui.get('open-master').dispatch('click');
+  ui.get('master-upload').files=[file(plain,'fictional-master.txt')];await ui.get('master-upload').dispatch('change');
+  const review=ui.get('master-review');assert.equal(review.hidden,false);
+  for(const text of ['Contact details','Professional summary','Core competencies','Experience','Technical skills','Education','Business Analyst','Example Company','2022 to Present','Documented processes for stakeholders.'])assert.ok(review.textContent.includes(text),text);
+  assert.equal(review.querySelectorAll('input').length,0);assert.equal(ui.get('master-source-name').textContent,'fictional-master.txt');
+  await ui.get('restore-master').dispatch('click');
+  assert.equal(ui.get('master-dialog').open,true);assert.equal(ui.get('master-empty').hidden,false);assert.equal(review.innerHTML,'');assert.equal(review.hidden,true);assert.equal(ui.get('master-source-name').textContent,'');
+  const stored=ui.values.get(key);for(const text of ['Avery','example.com','Example Company','fictional-master.txt','importedText'])assert.ok(!stored.includes(text),text);
+  await ui.get('open-master').dispatch('click');assert.equal(review.innerHTML,'');
+});
+test('Master deletion failure keeps the clear control available and a retry removes the saved data',async()=>{
+  const values=new Map([[key,JSON.stringify(own)]]);let fail=true;
+  const storage={getItem:k=>values.get(k)??null,setItem:(k,v)=>{if(fail&&k===key)throw new Error('Storage denied');values.set(k,v);},removeItem:k=>values.delete(k)};
+  const ui=await setup({},false,{fresh:true,storage});await ui.get('open-master').dispatch('click');await ui.get('restore-master').dispatch('click');
+  assert.equal(ui.get('master-review').innerHTML,'');assert.equal(ui.get('restore-master').disabled,false);assert.match(ui.get('master-import-status').textContent,/could not be confirmed/);
+  fail=false;await ui.get('restore-master').dispatch('click');assert.deepEqual(JSON.parse(values.get(key)),createBlankMaster());assert.equal(ui.get('restore-master').disabled,true);
+});
+test('Master clearing in another tab invalidates the local source and all displayed content',async()=>{
+  const ui=await setup({[key]:JSON.stringify(own)},false,{fresh:true});await ui.get('open-master').dispatch('click');
+  await ui.page.dispatch('storage',{key,newValue:JSON.stringify(createBlankMaster()),storageArea:globalThis.localStorage});
+  assert.equal(ui.get('master-review').innerHTML,'');assert.equal(ui.get('master-import-text').value,'');assert.equal(ui.get('master-empty').hidden,false);assert.equal(ui.get('tailor-button').disabled,true);
+  await ui.get('open-master').dispatch('click');assert.equal(ui.get('master-review').hidden,true);
+});

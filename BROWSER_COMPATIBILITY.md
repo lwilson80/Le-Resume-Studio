@@ -56,12 +56,21 @@ Imports retain each final accomplishment within its job and preserve uploaded ro
 
 Word and PDF uploads retain detected typography, supported section order and role/company/year headings. PDF uses compatible embedded font families. Complex tables, graphics, columns and exact original pagination are not reproduced. TXT and RTF use a single-column Arial 11-point template with 0.75-inch margins, consistent headings and action bullets. See [MIT resume checklist](https://capd.mit.edu/resources/resume-checklist/). The release passed 124 automated tests; real browser and ATS certification are not claimed.
 
-## Unique upload filenames — version 19
+## Unique upload filenames — version 20
 
 Each successful master resume upload requires a unique filename within this browser master workspace. Comparisons normalize Unicode, trim surrounding whitespace and ignore capitalization. A duplicate is rejected before extraction and leaves the existing master intact. Rename revised files before uploading. Failed or canceled imports do not reserve names. Clear Master Resume deletes the master and its filename history, allowing a fresh upload. The history stays alongside the master in existing browser storage or the encrypted vault; no filename data is shared across users. Applicant names do not need to change.
 
-The release passes 128 automated checks, including duplicate rejection, renamed replacements, failed retry, reopening and clearing filename history. Native Safari/mobile picker interactions remain unverified.
+The release passes 132 automated checks, including duplicate rejection, renamed replacements, failed retry, reopening and clearing filename history. Native Safari/mobile picker interactions remain unverified.
 
 ## Flexible master resume imports
 
 Uploads need no name, professional summary, skills, specific section headings, complete job details or education fields. Short readable text is accepted. Unlabeled text is retained as summary content when structure is absent. Tailoring and downloads allow empty fields; cover letters omit role evidence when no accomplishments are available. Review extraction and output because missing facts cannot be inferred reliably. Supported file formats, readable-text and resource protections and unique filenames remain in effect.
+
+Clear Master Resume empties the uploaded resume text, job description, extra keywords and copy-text boxes immediately after confirmation, before awaiting the browser storage write. Saved application versions remain separate.
+
+
+## Master resume review and deletion — version 20
+
+The master dialog restores version 1 section grouping: contact details, professional summary, core competencies, expandable experience, technical skills and education. Upload remains the only way to change source content; displayed details and the original-text disclosure are read-only. Missing fields do not block upload.
+
+Clear Master Resume immediately empties all source sections, original text, file selection, filename history and current workspace. The dialog stays open with an empty state. A blank marker replaces saved master data and prevents recovery from older application snapshots; protected storage writes the same blank master into the encrypted vault. Storage failures keep a clear retry available and report that persistence could not be confirmed. Master-clear storage events invalidate stale copies in other tabs. Saved application versions remain separately managed. The release passes 132 automated checks; native browser and assistive-technology review remains pending.

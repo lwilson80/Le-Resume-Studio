@@ -178,3 +178,24 @@ test('Every detected role receives a separate expanded Experience section, inclu
   assert.ok(roles[1].textContent.includes('Final analyst responsibility.'));assert.ok(!roles[2].textContent.includes('Final analyst responsibility.'));
   await ui.get('restore-master').dispatch('click');assert.equal(ui.get('master-review').querySelectorAll('.master-role').length,0);assert.equal(ui.values.has(key),false);assert.equal(ui.values.get('lw-resume-studio-master-cleared-v1'),'true');
 });
+
+test('Combined two-line employment headings retain each job and its final accomplishment',()=>{
+  const draft=parseResumeText('Avery Taylor\nEXPERIENCE\nSenior Analyst | Example Company\n2023 to Present\n• Led reporting reviews.\nFinal responsibility\nExample Services Inc. | 2020 – 2023\nBusiness Analyst\n• Analyzed reports.\nLast task\nCoordinator at Earlier Company\n2018 to 2020\n• Coordinated meetings.');
+  assert.deepEqual(draft.roles.map(r=>[r.title,r.employer,r.dates]),[['Senior Analyst','Example Company','2023 to Present'],['Business Analyst','Example Services Inc.','2020 – 2023'],['Coordinator','Earlier Company','2018 to 2020']]);
+  assert.equal(draft.roles[0].bullets.at(-1),'Final responsibility');assert.equal(draft.roles[1].bullets.at(-1),'Last task');
+});
+test('Every uploaded job survives both tailoring lengths and Word PDF and text exports regardless of relevance',async()=>{
+  const source={...own,roles:Array.from({length:7},(_,i)=>({title:['Analyst','Coordinator','Assistant'][i%3],employer:'Example Employer '+i,dates:`${2010+i} to ${2011+i}`,bullets:i===6?[]:['Reviewed reporting records.','Final responsibility '+i+'.']}))};
+  const {auditEmploymentHistory}=await import('../dist/engine.js');
+  const fonts=await Promise.all(['NimbusSans-Regular','NimbusSans-Bold'].map(n=>fs.readFile(new URL('../dist/vendor/'+n+'.cff',import.meta.url))));
+  const pdf=await import('../dist/vendor/pdfjs/pdf.mjs');
+  for(const length of ['balanced','detailed']){
+    const result=tailorResume(source,'We need an analyst with SQL, reporting and requirements analysis skills to document business processes and support stakeholders.',{length});
+    assert.deepEqual(result.employmentAudit,{expected:7,retained:7,complete:true});
+    for(const [ext,blob] of [['txt',new Blob([resumeText(result.resume)])],['docx',await createDocx(result.resume)],['pdf',new Blob([await createPdf(result.resume,globalThis.PDFLib,fonts)])]]){
+      const text=await extractResumeText(Object.assign(blob,{name:'fictional-all-jobs.'+ext}),{loadZip:async()=>globalThis.JSZip,loadPDF:async()=>pdf});
+      for(const role of source.roles){assert.ok(text.includes(role.employer),ext+' '+role.employer);assert.ok(text.includes(role.dates),ext+' '+role.dates);}
+    }
+    const broken=structuredClone(result.resume);broken.roles.pop();assert.equal(auditEmploymentHistory(broken,source).complete,false);
+  }
+});

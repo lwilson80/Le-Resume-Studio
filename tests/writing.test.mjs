@@ -114,3 +114,22 @@ test('A broad posting keeps original evidence and all detected supported job phr
   for(const e of result.coverLetter.evidence)assert.ok(result.resume.roles.some(r=>r.employer===e.employer&&r.title===e.title&&r.bullets.includes(e.text)));
 });
 export {postings};
+
+test('Negated experience and learning goals never become supported qualifications or a false 10 out of 10',()=>{
+  const source=structuredClone(MASTER_RESUME);source.summary='Analyst. No experience with Python or Kubernetes. Currently learning Terraform.';source.competencies=['Reporting'];source.roles=[{title:'Analyst',employer:'Example Company',dates:'2020 to Present',bullets:['Analyzed reporting records.']}];source.skills=[];source.education=[];
+  const result=tailorResume(source,'We need an analyst with experience with Python, Kubernetes and Terraform. Maintain technical reporting and document work for business stakeholders.');
+  for(const term of ['Python','Kubernetes','Terraform']){const k=result.keywords.find(k=>k.jobTerms.some(t=>hasPhrase(t,term)));assert.ok(k,term);assert.equal(k.supported,false,term);}
+  assert.equal(result.audit.targetMet,false);assert.ok(result.audit.evidenceNeeded>=3);assert.ok(!coverLetterText(result.coverLetter,result.resume).includes('Python'));
+});
+test('Independent affirmative source evidence supports a skill despite a separate negative mention',()=>{
+  const source=structuredClone(MASTER_RESUME);source.summary='No experience with Python.';source.roles[0].bullets.push('Programmed Python reports for stakeholders.');
+  const result=tailorResume(source,'The analyst needs Python, reporting, SQL and requirements analysis to maintain business reports and support stakeholders through technical documentation.');
+  const python=result.keywords.find(k=>k.name==='Python');assert.equal(python.supported,true);assert.ok(python.evidence.some(e=>e.text.includes('Programmed Python')));
+});
+
+test('Keyword alignment never invents a new professional title from a shared skill',()=>{
+  const source=structuredClone(MASTER_RESUME);source.summary='Administrative assistant supporting reporting.';source.roles=[{title:'Administrative Assistant',employer:'Example Company',dates:'2020 to Present',bullets:['Prepared reporting documents.']}];source.competencies=['Reporting'];source.skills=[];source.education=[];
+  const result=tailorResume(source,'A data analysis professional is needed to support reporting and prepare documents for business stakeholders. Python experience is also required.');
+  assert.doesNotMatch(result.resume.summary,/data analysis professional|business applications professional/i);
+  assert.equal(result.resume.roles[0].title,'Administrative Assistant');assert.equal(result.audit.targetMet,false);
+});

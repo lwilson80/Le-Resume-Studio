@@ -107,19 +107,29 @@ export function parseResumeText(text){
   const employmentDate=/^(?:(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?\s+|\d{1,2}[/.-])?(?:19|20)\d{2}(?:\s*(?:to|[-–—])\s*(?:(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:tember)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\.?\s+|\d{1,2}[/.-])?(?:(?:19|20)\d{2}|present|current|now))?$/i;
   const isBullet=line=>/^[•●▪◦*-]\s*/.test(line);
   const titlePattern=/\b(?:analyst|manager|director|officer|specialist|engineer|developer|coordinator|administrator|assistant|associate|consultant|supervisor|lead|leader|head|president|intern|designer|technician|accountant|representative|advisor|adviser|clerk|nurse|teacher|professor|scientist|recruiter|architect|executive|operator|cashier|agent|counsel|paralegal|attorney|founder)\b/i;
-  const headingLabel=line=>line&&!isBullet(line)&&line.length<=120&&!/[.!?]$/.test(line)&&! /^(?:Achieved|Accomplished|Analyzed|Managed|Led|Built|Oversaw|Supported|Support|Documented|Wrote|Created|Developed|Set goals|Maintained|Delivered|Provided|Coordinated|Reduced|Increased|Improved)\b/i.test(line);
+  const headingLabel=line=>line&&!isBullet(line)&&line.length<=120&&(!/[.!?]$/.test(line)||/\b(?:inc|corp|co|ltd)\.$/i.test(line))&&! /^(?:Achieved|Accomplished|Analyzed|Managed|Led|Built|Oversaw|Supported|Support|Documented|Wrote|Created|Developed|Set goals|Maintained|Delivered|Provided|Coordinated|Reduced|Increased|Improved)\b/i.test(line);
+  function splitHeaderLine(line){
+    if(employmentDate.test(line))return [line];
+    const delimited=line.split(/\s*[|·\t]\s*/).filter(Boolean);
+    if(delimited.length>1)return delimited;
+    let parts=line.split(/\s{2,}|\s+at\s+|\s+[–—]\s+/i).filter(Boolean);
+    if(parts.length===1){const comma=line.split(/,\s+/);if(comma.length===2&&titlePattern.test(comma[0]))parts=comma;}
+    return parts;
+  }
   function headerAt(index){
-    const inline=entries[index].split(/\s*[|·]\s*/).filter(Boolean);
-    let parts=inline,consumed=1;
-    if(parts.length!==3){parts=entries.slice(index,index+3);consumed=3;}
-    if(parts.length!==3||parts.some(isBullet))return null;
-    const d=parts.findIndex(part=>employmentDate.test(part));if(d<0)return null;
-    const labels=parts.map((text,i)=>({text,i})).filter(p=>p.i!==d);
-    if(!labels.every(p=>headingLabel(p.text)))return null;
-    let title=labels.find(p=>titlePattern.test(p.text)&&! /\b(?:company|corporation|corp|inc|llc|university|bank|group|partners)\b/i.test(p.text))||labels[0];
-    const employer=labels.find(p=>p!==title);
-    const order=parts.map((_,i)=>i===d?'dates':i===title.i?'title':'employer');
-    return {consumed,role:{title:title.text,employer:employer.text,dates:parts[d],bullets:[],headerOrder:order}};
+    for(let consumed=1;consumed<=3;consumed++){
+      const lines=entries.slice(index,index+consumed);if(lines.length!==consumed||lines.some(isBullet))continue;
+      const parts=lines.flatMap(splitHeaderLine);if(parts.length!==3)continue;
+      const d=parts.findIndex(part=>employmentDate.test(part));if(d<0)continue;
+      const labels=parts.map((text,i)=>({text,i})).filter(p=>p.i!==d);
+      if(!labels.every(p=>headingLabel(p.text)))continue;
+      // Combined headings need a recognizable role, rather than an accomplishment.
+      if(consumed<3&&!labels.some(p=>titlePattern.test(p.text)))continue;
+      const title=labels.find(p=>titlePattern.test(p.text)&&! /\b(?:company|corporation|corp|inc|llc|university|bank|group|partners)\b/i.test(p.text))||labels[0];
+      const employer=labels.find(p=>p!==title),order=parts.map((_,i)=>i===d?'dates':i===title.i?'title':'employer');
+      return {consumed,role:{title:title.text,employer:employer.text,dates:parts[d],bullets:[],headerOrder:order}};
+    }
+    return null;
   }
   for(let i=0;i<entries.length;){
     const heading=headerAt(i);

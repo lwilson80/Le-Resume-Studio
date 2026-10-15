@@ -159,6 +159,21 @@ function candidatePhrases(jd, existing) {
   }
   return [...candidates.values()].slice(0, 20);
 }
+function affirmativeMention(text,aliases){
+  return String(text||'').split(/[\n;.!?]+|\b(?:but|however)\b/i).some(clause=>{
+    if(!aliases.some(a=>hasPhrase(clause,a)))return false;
+    const denied=/\b(?:no|without|lack(?:s|ing)?)\b.{0,50}\b(?:experience|knowledge|proficiency|skills?|certification)\b|\bnot\s+(?:experienced|proficient|skilled|certified|familiar)|\b(?:do|does)\s+not\s+(?:know|use)|\b(?:interested in|hope to learn|planning to learn|currently learning|aspiring to|seeking experience)\b/i;
+    return !denied.test(clause);
+  });
+}
+function qualificationSources(master){
+  return [master.summary,...master.competencies,...master.roles.flatMap(r=>[r.title,...r.bullets]),...master.skills.flatMap(s=>s.items),...master.education.map(e=>e.qualification)];
+}
+export function auditEmploymentHistory(resume,master){
+  const expected=master.roles||[],actual=resume.roles||[];
+  const retained=expected.filter((role,i)=>actual[i]&&['title','employer','dates'].every(key=>actual[i][key]===role[key])).length;
+  return {expected:expected.length,retained,complete:retained===expected.length&&actual.length===expected.length};
+}
 export function extractKeywords(jd, master, extra = '') {
   const corpus = masterText(master);
   const found = CATALOG.filter(k => k.aliases.some(a => hasPhrase(jd, a)));
@@ -167,9 +182,9 @@ export function extractKeywords(jd, master, extra = '') {
   const unique = [...new Map(all.map(k => [normalize(k.name), k])).values()];
   return unique.map(k => {
     const matched = k.aliases.filter(a => hasPhrase(jd, a));
-    const evidence = master.roles.flatMap((r, i) => r.bullets.map((b, j) => ({role: r.title, employer: r.employer, roleIndex: i, bulletIndex: j, text: b}))).filter(b => k.aliases.some(a => hasPhrase(b.text, a)));
+    const evidence = master.roles.flatMap((r, i) => r.bullets.map((b, j) => ({role: r.title, employer: r.employer, roleIndex: i, bulletIndex: j, text: b}))).filter(b => affirmativeMention(b.text,k.aliases));
     const exactAlready = matched.some(a => hasPhrase(corpus, a));
-    const supported = k.aliases.some(a => hasPhrase(corpus, a));
+    const supported = qualificationSources(master).some(text=>affirmativeMention(text,k.aliases));
     const terms = matched.length ? matched : [k.name];
     return {...k, jobTerms: terms, inJobDescription:matched.length>0, supported, exactAlready, evidence, frequency: terms.reduce((n, a) => n + Math.max(1, normalize(jd).split(normalize(a)).length - 1), 0)};
   }).sort((a, b) => b.frequency - a.frequency || a.name.localeCompare(b.name));
@@ -214,18 +229,13 @@ function scoreText(text, keywords) {
 function createSummary(master, keywords) {
   const backed = keywords.filter(k => k.supported);
   if (!backed.length || !master.summary.trim()) return master.summary;
-  const groupScores = ['Technology', 'Data', 'Business', 'Finance', 'Risk', 'Mortgage'].map(group => ({group, score: backed.filter(k => k.group === group).reduce((n, k) => n + Math.min(k.frequency, 4), 0)})).sort((a, b) => b.score - a.score);
-  const introductions = {
-    Technology: 'Business applications professional', Data: 'Business applications and data analysis professional',
-    Business: 'Business applications and process improvement professional', Finance: 'Financial operations and billing professional',
-    Risk: 'Risk management and compliance professional', Mortgage: 'Mortgage operations and servicing professional'
-  };
   // Use the uploaded summary's tenure only; never attribute a total tenure to a specific tool.
   const tenure = master.summary.match(/(?:more than|over|approximately)?\s*\d+\+?\s*years?\s+of\s+experience/i)?.[0];
   const top = backed.filter(k => k.group !== 'Certification').slice(0, 5).map(k => k.expanded);
+  if (!top.length) return master.summary;
   const details = top.slice(0, -1).join(', ') + (top.length > 1 ? ', and ' : '') + top[top.length-1];
   const ending = master.summary.match(/(?:Experienced partner|Experienced in|Known for)[^.]*\./)?.[0] || '';
-  return `${introductions[groupScores[0].group]}${tenure ? ' with ' + tenure.trim().replace(/years?\s+of\s+experience/i, 'years of overall professional experience') : ''}. Relevant background includes ${details}. ${ending}`.trim();
+  return `${tenure ? 'Professional with ' + tenure.trim().replace(/years?\s+of\s+experience/i, 'years of overall professional experience') + '. ' : ''}Relevant background includes ${details}. ${ending}`.trim();
 }
 function includesExactKeyword(text, k) {
   return k.jobTerms.length>0 && k.jobTerms.every(t => hasPhrase(text, t));
@@ -247,6 +257,7 @@ export function auditResume(resume,keywords,master) {return auditText(resumeText
 export function auditCoverLetter(letter,keywords) {return auditText(letter.paragraphs.join(' '),keywords);}
 export function reviewApplication(result,{reextract=false}={}) {
   if(reextract)result.keywords=extractKeywords(result.jd||'',result.master,result.extra||'');
+  result.employmentAudit=auditEmploymentHistory(result.resume,result.master);
   result.audit=auditResume(result.resume,result.keywords,result.master);
   result.coverAudit=auditCoverLetter(result.coverLetter,result.keywords);
   result.review=writingReview(result.resume,result.coverLetter,result.englishCorrections?.length||0);
@@ -390,6 +401,7 @@ export function tailorResume(master, jd, {title = '', company = '', length = 'ba
   resume.skills = master.skills.map(s => ({...s, items: [...s.items].sort((a, b) => scoreText(b, backed) - scoreText(a, backed))})).sort((a, b) => scoreText(b.items.join(' '), backed) - scoreText(a.items.join(' '), backed));
   optimizeResumeKeywords(resume,keywords,changes);
   const polished=polishResume(resume);changes.push(...polished.corrections);
+  if(!auditEmploymentHistory(polished.resume,master).complete)throw new Error('Every source job must be retained with its original title, company and dates. Please review the master resume.');
   const result = {resume:polished.resume,master:cloneData(master),jd,title:cleanEnglish(title),company:cleanEnglish(company),length,extra,ats,keywords,changes,englishCorrections:polished.corrections,writingProfile:WRITING_PROFILE.id,createdAt:new Date().toISOString()};
   result.coverLetter = createCoverLetter(result);
   return reviewApplication(result);
